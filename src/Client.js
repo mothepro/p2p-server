@@ -1,5 +1,4 @@
 import Peer from 'peerjs'
-import debug from 'debug'
 
 export default class Client {
 	/**
@@ -14,21 +13,17 @@ export default class Client {
 		key,
 		version,
 		hostID,
-		logger = false,
+		logger,
 	}) {
 		const options = {
 			key,
 			secure: false,
 		}
 
-		// set logging right
-		if (logger === true)
-			logger = debug('p2p-server-Host')
-
 		if (typeof logger === 'function') {
 			this.log            = logger
 			options.debug       = 3
-			options.logFunction = this.log.bind(this, 'peerjs >')
+			options.logFunction = this.log.bind(this, 'peerjs')
 		}
 
 		this.makePeer({version, hostID, options})
@@ -88,7 +83,7 @@ export default class Client {
 			}
 		})
 
-		this.host.on('data', data => this.recieve(data.from, data.data))
+		this.host.on('data', data => this.receive(data.from, data.data))
 		this.host.on('error', err => this.errHandler(err))
 
 		/**

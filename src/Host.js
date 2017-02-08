@@ -69,7 +69,7 @@ export default class Host extends Client {
 		this.clientIDs.push(client.id)
 
 		client.on('open', () => this.clientReady(client))
-		client.on('data', data => this.recieve(client, data))
+		client.on('data', data => this.receive(client, data))
 		client.on('close', () => this.clientLeft(client))
 		client.on('error', err => this.errHandler(err))
 
