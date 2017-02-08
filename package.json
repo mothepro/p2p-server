@@ -1,0 +1,18 @@
+{
+  "name": "p2p-server",
+  "version": "0.0.0",
+  "description": "A server-client library built using peerjs. (No server needed)",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": {
+    "name": "Maurice Prosper",
+    "email": "mothepro@live.com",
+    "url": "https://mauriceprosper.com"
+  },
+  "license": "ISC",
+  "dependencies": {
+    "peerjs": "^0.3.14"
+  }
+}
