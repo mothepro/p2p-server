@@ -127,7 +127,7 @@ export default class Client {
 	 * Should only be connected to the host.
 	 */
 	disconnect() {
-		log('Left server.')
+		this.log('Left server.')
 	}
 
 	/**
