@@ -144,9 +144,13 @@ export default class Host extends Client {
 		this.log('receiving', client.id, data)
 	}
 
-	/** @override */
+	/**
+	 * Alias for broadcast.
+	 * @override
+	 */
 	send(data, to) {
 		this.log('should not use method "send" as host.')
+		this.broadcast(data)
 	}
 
 	/**
@@ -166,7 +170,8 @@ export default class Host extends Client {
 				__from: from.id,
 			}
 
-		if(peer instanceof DataConnection) {
+		// peer instanceof DataConnection === false ?!?!?
+		if(typeof peer.send === 'function') {
 			peer.send(data)
 			return true
 		}
@@ -224,5 +229,20 @@ export default class Host extends Client {
 		}
 
 		return ret
+	}
+
+	/**
+	 * Convert an id into DataConnection
+	 * @param {string|DataConnection} conn
+	 * @return {DataConnection}
+	 */
+	toConnection(conn) {
+		if (typeof conn === 'string')
+			conn = this.peers[conn]
+
+		if(conn)
+			return conn
+
+		return false
 	}
 }
