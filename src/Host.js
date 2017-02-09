@@ -4,9 +4,11 @@ import Client from './Client'
 export default class Host extends Client {
 	/**
 	 * Creates the Peer.
-	 * @param version {string} version of top package, to make sure host and client are in sync.
-	 * @param hostID {string} ID to use as the hosting peer.
+	 *
+	 * @param {string} version version of top package, to make sure host and client are in sync.
+	 * @param {string} hostID ID to use as the hosting peer.
 	 * @param options for the Peer constructor.
+	 * @override
 	 */
 	makePeer({
 		version,
@@ -14,7 +16,7 @@ export default class Host extends Client {
 		hostID = Host.randomID(),
 	}) {
 		/**
-		 * Hashmap of all active connection.
+		 * Hashmap of all active onConnection.
 		 * @type {Object.<string, DataConnection>}
 		 */
 		this.peers = {}
@@ -27,13 +29,11 @@ export default class Host extends Client {
 
 		/** @type {Peer} */
 		this.peer = new Peer(hostID, options)
-
-		this.peer.on('open', id => this.open(id))
-		this.peer.on('connection', (c) => this.connection(c, version))
-		this.peer.on('close', () => this.disconnect())
-		this.peer.on('error', err => this.errHandler(err))
-		this.peer.on('destroy', () => this.quit())
-
+		this.peer.on('onReady', id => this.onReady(id))
+		this.peer.on('connection', (c) => this.onConnection(c, version))
+		this.peer.on('close', this.onDisconnect.bind(this))
+		this.peer.on('error', this.errorHandler.bind(this))
+		this.peer.on('destroy', this.onQuit.bind(this))
 		this.log('ready')
 	}
 
@@ -49,61 +49,87 @@ export default class Host extends Client {
 		return ret.substr(3, 7) // remove repetition
 	}
 
-	/** Remove */
-	open(id) {
-		this.log('ready')
-	}
+	/**
+	 * ID is generated.
+	 * Wait for connections from clients.
+	 *
+	 * @param {string} id
+	 * @override
+	 */
+	onReady(id) {}
 
 	/**
-	 * Someone attempts to connect to us
-	 * @param client {DataConnection}
-	 * @param version {string=}
+	 * Someone attempts to connect to us.
+	 *
+	 * @param {DataConnection} client
+	 * @param {string=} version
+	 * @override
 	 */
-	connection(client, version = '0') {
+	onConnection(client, version = '0') {
 		if(client.metadata.version !== version) {
-			this.errHandler(Error(`Verision of client "${client.metadata.version}" doesn't match host "${version}".`))
+			this.errorHandler(Error(`Version of client "${client.metadata.version}" doesn't match host "${version}".`))
 			return
 		}
 
 		this.peers[client.id] = client
 		this.clientIDs.push(client.id)
 
-		client.on('open', () => this.clientReady(client))
-		client.on('data', data => this.receive(client, data))
-		client.on('close', () => this.clientLeft(client))
-		client.on('error', err => this.errHandler(err))
+		client.on('open', this.onClientReady.bind(this, client))
+		client.on('data', data => this.onReceive(client, data))
+		client.on('close', this.onClientLeft.bind(this, client))
+		client.on('error', this.errorHandler.bind(this))
 
 		this.log('Connection from', client.id)
 	}
 
 	/**
-	 * Emitted when the connection is ready to use.
+	 * Emitted when the onConnection is ready to use.
+	 *
 	 * @param {DataConnection} client
 	 */
-	clientReady(client) {
+	onClientReady(client) {
 		this.log('listening to', client.id)
 	}
 
 	/**
-	 * Receive data from a client
-	 * @param client {DataConnection}
-	 * @param data
+	 * A client has left the game.
+	 *
+	 * @param {DataConnection} client
+	 * @returns {boolean} whether the client was actually removed.
 	 */
-	receive(client, data) {
+	onClientLeft(client) {
+		this.log('closing with', client.id)
+		const i = this.clientIDs.indexOf(client.id)
+
+		if(i !== -1) {
+			delete this.clientIDs[i]
+			delete this.peers[client.id]
+			return true
+		}
+
+		return false
+	}
+
+	/**
+	 * Receive data from a client.
+	 *
+	 * @param {DataConnection} client
+	 * @param data
+	 * @override
+	 */
+	onReceive(client, data) {
 		this.log('receiving', client.id, data)
 	}
 
 	/**
-	 * Send data to someone
+	 * Send data to someone.
+	 *
 	 * @param {DataConnection} peer
 	 * @param data
 	 * @param {DataConnection=} from the client which actually sent the message
-	 * @private
+	 * @override
 	 */
-	send(peer, data, from = null) {
-		if(from == null)
-			from = peer
-
+	send(peer, data, from = peer) {
 		peer.send({
 			data,
 			from: from.id,
@@ -112,6 +138,7 @@ export default class Host extends Client {
 
 	/**
 	 * Send to all connections.
+	 *
 	 * @param data
 	 */
 	broadcast(data) {
@@ -127,6 +154,7 @@ export default class Host extends Client {
 	/**
 	 * Send to all players except for one.
 	 * Useful for forwarding data from peer.
+	 *
 	 * @param data
 	 * @param {string|DataConnection} client
 	 */
@@ -144,22 +172,6 @@ export default class Host extends Client {
 		}
 
 		this.log('Forwarding', data)
-	}
-
-	/**
-	 * A client has left the game.
-	 */
-	clientLeft(client) {
-		this.log('closing with', client.id)
-		const i = this.clientIDs.indexOf(client.id)
-
-		if(i !== -1) {
-			delete this.clientIDs[i]
-			delete this.peers[client.id]
-			return true
-		}
-
-		return false
 	}
 
 	/**

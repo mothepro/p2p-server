@@ -4,63 +4,54 @@ export default class Client {
 	/**
 	 * Create a host as a server to other clients.
 	 *
-	 * @param key {string} a Peer JS API key.
-	 * @param version {string} version of top package, to make sure host and client are in sync.
-	 * @param hostID {string} peer id of host to connect to.
-	 * @param [logger] {boolean|Function} optional method to log info.
+	 * @param {string} key a Peer JS API key.
+	 * @param {string} version version of top package, to make sure host and client are in sync.
+	 * @param {string} hostID peer id of host to connect to.
+	 * @param {Function=} logger optional method to log info.
+	 * @param {Object=} options
 	 */
 	constructor({
 		key,
 		version,
 		hostID,
 		logger,
-	}) {
-		const options = {
-			key,
+		options = {
 			secure: false,
-		}
-
+		},
+	}) {
 		if (typeof logger === 'function') {
 			this.log            = logger
 			options.debug       = 3
 			options.logFunction = this.log.bind(this, 'peerjs')
 		}
+		options.key = key
 
 		this.makePeer({version, hostID, options})
 	}
 
 	/**
-	 * Creates the peer
-	 * @param version {string} version of top package, to make sure host and client are in sync.
-	 * @param hostID {string} peer id of host to connect to.
+	 * Creates the peer.
+	 *
+	 * @param {string} version version of top package, to make sure host and client are in sync.
+	 * @param {string} hostID peer id of host to connect to.
 	 * @param options for the Peer constructor.
 	 */
 	makePeer({version, hostID, options}) {
+		/** @type {Peer} */
 		this.peer = new Peer(options)
-		this.peer.on('error', err => this.errHandler(err))
-
-		/**
-		 * The host leaves and the connections are all dropped.
-		 */
-		this.peer.on('close', () => this.quit())
-
-		/**
-		 * Connect to the host.
-		 * Then disconnect from the server.
-		 */
-		this.peer.on('open', id => this.open({id, version, hostID}))
-
-		/**
-		 * Disconnected from the peer server.
-		 */
-		this.peer.on('disconnected', () => this.disconnect())
+		this.peer.on('error', this.errorHandler.bind(this))
+		this.peer.on('close', this.onQuit.bind(this))
+		this.peer.on('open', id => this.onReady({id, version, hostID}))
+		this.peer.on('disconnected', this.onConnection.bind(this))
+		this.log('ready')
 	}
 
 	/**
 	 * Handle errors with the peer.
-	 * @param e
+	 *
+	 * @param {Error} e the error
 	 */
-	errHandler(e) {
+	errorHandler(e) {
 		this.log('error >', e)
 	}
 
@@ -71,45 +62,30 @@ export default class Client {
 
 	/**
 	 * When an ID is generated.
+	 * Connect to the host. Then disconnect from the server.
+	 *
 	 * @param id {string} generated peer id for client.
 	 * @param version {string} version of top package, to make sure host and client are in sync.
 	 * @param hostID {string} peer id of host to connect to.
 	 */
-	open({id, version, hostID}) {
+	onReady({id, version, hostID}) {
 		/** @type {DataConnection} */
 		this.host = this.peer.connect(hostID, {
 			metadata: {
 				version,
 			}
 		})
-
-		this.host.on('data', data => this.receive(data.from, data.data))
-		this.host.on('error', err => this.errHandler(err))
-
-		/**
-		 * leave server once ready
-		 */
-		this.host.on('open', () => this.peer.disconnect())
-
-		/**
-		 * When the connection is closed.
-		 * Can try to reconnect though.
-		 */
-		this.host.on('close', () => {
-			this.log('attempting to reconnect to server')
-			this.peer.reconnect()
-
-			// can't connect to server
-			if(this.peer.disconnected)
-			this.quit()
-		})
+		this.host.on('data', data => this.onReceive(data.from, data.data))
+		this.host.on('error', this.errorHandler.bind(this))
+		this.host.on('open', () => this.peer.disconnect()) // leave server
+		this.host.on('close', this.onDisconnect.bind(this))
 	}
 
 	/**
 	 * Receive some data from the host
 	 * @param data
 	 */
-	receive(data) {
+	onReceive(data) {
 		this.log('receiving', data)
 	}
 
@@ -123,18 +99,29 @@ export default class Client {
 	}
 
 	/**
-	 * Leave the server.
-	 * Should only be connected to the host.
+	 * Connected to the host.
+	 * Can leave the server now.
 	 */
-	disconnect() {
-		this.log('Left server.')
+	onConnection() {}
+
+	/**
+	 * Disconnected from the host.
+	 * Can try to reconnect to the server, then to the host again.
+	 */
+	onDisconnect() {
+		this.log('attempting to reconnect to server')
+		this.peer.reconnect()
+
+		// can't connect to server
+		if(this.peer.disconnected)
+			this.onQuit()
 	}
 
 	/**
 	 * Peer is destroyed and can no longer accept or create any new connections.
 	 * At this time, the peer's connections will all be closed.
 	 */
-	quit() {
+	onQuit() {
 		if(!this.peer.destroyed && !this.stopping) {
 			this.peer.destroy()
 			this.stopping = true
