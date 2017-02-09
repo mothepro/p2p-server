@@ -29,7 +29,7 @@ export default class Host extends Client {
 
 		/** @type {Peer} */
 		this.peer = new Peer(hostID, options)
-		this.peer.on('onReady', id => this.onReady(id))
+		this.peer.on('open', id => this.onReady(id))
 		this.peer.on('connection', (c) => this.onConnection(c, version))
 		this.peer.on('close', this.onDisconnect.bind(this))
 		this.peer.on('error', this.errorHandler.bind(this))
