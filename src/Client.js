@@ -75,14 +75,15 @@ export default class Client {
 				version,
 			}
 		})
-		this.host.on('data', data => this.onReceive(data.from, data.data))
+		this.host.on('data', this.onReceive.bind(this))
 		this.host.on('error', this.errorHandler.bind(this))
 		this.host.on('open', () => this.peer.disconnect()) // leave server
 		this.host.on('close', this.onDisconnect.bind(this))
 	}
 
 	/**
-	 * Receive some data from the host
+	 * Receive some data from the host.
+	 *
 	 * @param data
 	 */
 	onReceive(data) {
@@ -90,12 +91,30 @@ export default class Client {
 	}
 
 	/**
-	 * Send data to the host
-	 * @param data
+	 * Send data to the host.
+	 *
+	 * @param {*} data
+	 * @param {(boolean|string)=} to Connection to send to, leave empty for host (true to broadcast)
 	 */
-	send(data) {
+	send(data, to = '') {
+		if(to)
+			data = {
+				data,
+				__to: to,
+			}
+
 		this.host.send(data)
 		this.log('sending', data)
+	}
+
+	/**
+	 * Tell the host to broadcast this message.
+	 *
+	 * @param data
+	 */
+	broadcast(data) {
+		this.send(data, true)
+		this.log('broadcasting', data)
 	}
 
 	/**

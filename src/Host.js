@@ -75,7 +75,7 @@ export default class Host extends Client {
 		this.clientIDs.push(client.id)
 
 		client.on('open', this.onClientReady.bind(this, client))
-		client.on('data', data => this.onReceive(client, data))
+		client.on('data', data => this.onReceive_(client, data))
 		client.on('close', this.onClientLeft.bind(this, client))
 		client.on('error', this.errorHandler.bind(this))
 
@@ -111,7 +111,30 @@ export default class Host extends Client {
 	}
 
 	/**
-	 * Receive data from a client.
+	 * Parse a message to decide what to do.
+	 *
+	 * @param {DataConnection} client
+	 * @param data
+	 * @private
+	 */
+	onReceive_(client, data) {
+		// forward on client's behalf
+		if(data.__to === true)
+			this.forward(client, data.data)
+
+		// sendTo a direct message
+		else if(data.__to) {
+			const other = this.peers[data.__to]
+			if(other)
+				this.sendTo(other, data.data, client)
+		}
+		// receive a regular message
+		else
+			this.onReceive(client, data)
+	}
+
+	/**
+	 * Receive some data from a client.
 	 *
 	 * @param {DataConnection} client
 	 * @param data
@@ -121,19 +144,34 @@ export default class Host extends Client {
 		this.log('receiving', client.id, data)
 	}
 
+	/** @override */
+	send(data, to) {
+		this.log('should not use method "send" as host.')
+	}
+
 	/**
 	 * Send data to someone.
 	 *
 	 * @param {DataConnection} peer
-	 * @param data
+	 * @param {*} data
 	 * @param {DataConnection=} from the client which actually sent the message
-	 * @override
 	 */
-	send(peer, data, from = peer) {
-		peer.send({
-			data,
-			from: from.id,
-		})
+	sendTo(peer, data, from = null) {
+		if(typeof from === 'string')
+			from = this.peers[from]
+
+		if(from)
+			data = {
+				data,
+				__from: from.id,
+			}
+
+		if(peer instanceof DataConnection) {
+			peer.send(data)
+			return true
+		}
+
+		return false
 	}
 
 	/**
@@ -146,7 +184,7 @@ export default class Host extends Client {
 			return
 
 		for(let client of this.clients)
-			this.send(client, data)
+			this.sendTo(client, data)
 
 		this.log('Broadcasting', data)
 	}
@@ -155,10 +193,10 @@ export default class Host extends Client {
 	 * Send to all players except for one.
 	 * Useful for forwarding data from peer.
 	 *
+	 * @param {string|DataConnection} client the one to skip
 	 * @param data
-	 * @param {string|DataConnection} client
 	 */
-	forward(data, client) {
+	forward(client, data) {
 		if (typeof client === 'string') {
 			client = this.peers[client]
 		}
@@ -168,7 +206,7 @@ export default class Host extends Client {
 		for(const index in this.clientIDs) {
 			if (index == skip) continue
 
-			this.send(this.peers[this.clientIDs[index]], data, client)
+			this.sendTo(this.peers[this.clientIDs[index]], data, client)
 		}
 
 		this.log('Forwarding', data)
