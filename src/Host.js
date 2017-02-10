@@ -77,7 +77,7 @@ export default class Host extends Client {
 		client.on('open', this.onClientReady.bind(this, client))
 		client.on('data', data => this.onReceive_(client, data))
 		client.on('close', this.onClientLeft.bind(this, client))
-		client.on('error', this.errorHandler.bind(this))
+		client.on('error', this.errorHandlerClient.bind(this))
 
 		this.log('Connection from', client.id)
 	}

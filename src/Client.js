@@ -56,6 +56,21 @@ export default class Client {
 	}
 
 	/**
+	 * Handle errors with the connection to the host.
+	 *
+	 * @param {Error} e the error
+	 */
+	errorHandlerClient(e) {
+		if(e.type === 'peer-unavailable') {
+			this.log('Unable to connect to the host. Make a new instance, or reload')
+			this.onQuit()
+			return
+		}
+
+		this.errorHandler(e)
+	}
+
+	/**
 	 * Logs info, empty by default.
 	 */
 	log() {}
@@ -76,7 +91,7 @@ export default class Client {
 			}
 		})
 		this.host.on('data', this.onReceive_.bind(this))
-		this.host.on('error', this.errorHandler.bind(this))
+		this.host.on('error', this.errorHandlerClient.bind(this))
 		this.host.on('open', () => this.peer.disconnect()) // leave server
 		this.host.on('close', this.onDisconnect.bind(this))
 	}
