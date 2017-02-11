@@ -106,7 +106,7 @@ export default class Client {
 		if(data.__from)
 			this.onReceive(data.__from, data.data)
 		else
-		  this.onReceive(this.host.id, data)
+			this.onReceive(this.host.id, data)
 	}
 
 	/**

@@ -76,7 +76,7 @@ export default class Host extends Client {
 
 		client.on('open', this.onClientReady.bind(this, client))
 		client.on('data', data => this.onReceive_(client, data))
-		client.on('close', this.onClientLeft.bind(this, client))
+		client.on('close', this.onClientLeft_.bind(this, client))
 		client.on('error', this.errorHandlerClient.bind(this))
 
 		this.log('Connection from', client.id)
@@ -97,18 +97,26 @@ export default class Host extends Client {
 	 * @param {DataConnection} client
 	 * @returns {boolean} whether the client was actually removed.
 	 */
-	onClientLeft(client) {
+	onClientLeft_(client) {
 		this.log('closing with', client.id)
 		const i = this.clientIDs.indexOf(client.id)
 
 		if(i !== -1) {
-			delete this.clientIDs[i]
+			this.clientIDs.splice(i, 1) //delete this.clientIDs[i]
 			delete this.peers[client.id]
+			this.onClientLeft(client)
 			return true
 		}
 
 		return false
 	}
+
+	/**
+	 * A client has left.
+	 *
+	 * @param {DataConnection} client
+	 */
+	onClientLeft(client) {}
 
 	/**
 	 * Parse a message to decide what to do.
