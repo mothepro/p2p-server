@@ -55,7 +55,6 @@ export default class Client extends EventEmitter {
 		this.peer.on('error', this.errorHandler.bind(this))
 		this.peer.on('close', this.quit.bind(this))
 		this.peer.on('open', id => this.ready({id, version, hostID}))
-		this.peer.on('disconnected', () => this.emit('connection'))
 	}
 
 	/**
@@ -100,9 +99,17 @@ export default class Client extends EventEmitter {
 		})
 		this.host.on('error', this.errorHandler.bind(this))
 		this.host.on('close', this.disconnect.bind(this))
-		this.host.on('open', () => this.peer.disconnect()) // leave server
+		this.host.on('open', this.connection.bind(this))
 		this.host.on('data', this.receive.bind(this))
 		this.emit('ready')
+	}
+
+	/**
+	 * Connected to host, leave the server
+	 */
+	connection() {
+		this.peer.disconnect()
+		this.emit('connection')
 	}
 
 	/**
