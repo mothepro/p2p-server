@@ -1,6 +1,14 @@
 import Peer from 'peerjs'
 import Client from './Client'
 
+/**
+ * @fires error
+ * @fires ready
+ * @fires quit
+ * @fires connection
+ * @fires disconnection
+ * @fires data
+ */
 export default class Host extends Client {
 	/**
 	 * Creates the Peer.
@@ -9,6 +17,7 @@ export default class Host extends Client {
 	 * @param {string} hostID ID to use as the hosting peer.
 	 * @param options for the Peer constructor.
 	 * @override
+	 * @event ready
 	 */
 	makePeer({
 		version,
@@ -16,7 +25,7 @@ export default class Host extends Client {
 		hostID = Host.randomID(),
 	}) {
 		/**
-		 * Hashmap of all active onConnection.
+		 * Hashmap of all active connection.
 		 * @type {Object.<string, DataConnection>}
 		 */
 		this.peers = {}
@@ -29,12 +38,11 @@ export default class Host extends Client {
 
 		/** @type {Peer} */
 		this.peer = new Peer(hostID, options)
-		this.peer.on('open', id => this.onReady(id))
-		this.peer.on('connection', (c) => this.onConnection(c, version))
-		this.peer.on('close', this.onDisconnect.bind(this))
+		this.peer.on('open', id => this.emit('ready', id))
+		this.peer.on('connection', (c) => this.connection(c, version))
+		this.peer.on('close', this.disconnect.bind(this))
 		this.peer.on('error', this.errorHandler.bind(this))
-		this.peer.on('destroy', this.onQuit.bind(this))
-		this.log('ready')
+		this.peer.on('destroy', this.quit.bind(this))
 	}
 
 	/**
@@ -50,22 +58,14 @@ export default class Host extends Client {
 	}
 
 	/**
-	 * ID is generated.
-	 * Wait for connections from clients.
-	 *
-	 * @param {string} id
-	 * @override
-	 */
-	onReady(id) {}
-
-	/**
 	 * Someone attempts to connect to us.
 	 *
 	 * @param {DataConnection} client
 	 * @param {string=} version
-	 * @override
+	 * @protected
+	 * @event connection
 	 */
-	onConnection(client, version = '0') {
+	connection(client, version = '0') {
 		if(client.metadata.version !== version) {
 			this.errorHandler(Error(`Version of client "${client.metadata.version}" doesn't match host "${version}".`))
 			return
@@ -74,21 +74,10 @@ export default class Host extends Client {
 		this.peers[client.id] = client
 		this.clientIDs.push(client.id)
 
-		client.on('open', this.onClientReady.bind(this, client))
-		client.on('data', data => this.onReceive_(client, data))
-		client.on('close', this.onClientLeft_.bind(this, client))
-		client.on('error', this.errorHandlerClient.bind(this))
-
-		this.log('Connection from', client.id)
-	}
-
-	/**
-	 * Emitted when the onConnection is ready to use.
-	 *
-	 * @param {DataConnection} client
-	 */
-	onClientReady(client) {
-		this.log('listening to', client.id)
+		client.on('open', () => this.emit('connection', client))
+		client.on('data', data => this.receive(client, data))
+		client.on('close', this.disconnect.bind(this, client))
+		client.on('error', this.errorHandler.bind(this))
 	}
 
 	/**
@@ -96,15 +85,17 @@ export default class Host extends Client {
 	 *
 	 * @param {DataConnection} client
 	 * @returns {boolean} whether the client was actually removed.
+	 * @protected
+	 * @event disconnection
 	 */
-	onClientLeft_(client) {
+	disconnect(client) {
 		this.log('closing with', client.id)
 		const i = this.clientIDs.indexOf(client.id)
 
 		if(i !== -1) {
 			this.clientIDs.splice(i, 1) //delete this.clientIDs[i]
 			delete this.peers[client.id]
-			this.onClientLeft(client)
+			this.emit('disconnection', client)
 			return true
 		}
 
@@ -112,44 +103,32 @@ export default class Host extends Client {
 	}
 
 	/**
-	 * A client has left.
-	 *
-	 * @param {DataConnection} client
-	 */
-	onClientLeft(client) {}
-
-	/**
 	 * Parse a message to decide what to do.
 	 *
 	 * @param {DataConnection} client
 	 * @param data
-	 * @private
+	 * @protected
+	 * @event data
 	 */
-	onReceive_(client, data) {
-		// forward on client's behalf
-		if(data.__to === true)
-			this.forward(client, data.data)
-
-		// sendTo a direct message
-		else if(data.__to) {
+	receive(client, data) {
+		// send a direct message on behalf
+		if(data.__to && data.__to !== true) {
 			const other = this.peers[data.__to]
 			if(other)
 				this.sendTo(other, data.data, client)
 		}
-		// receive a regular message
-		else
-			this.onReceive(client, data)
-	}
 
-	/**
-	 * Receive some data from a client.
-	 *
-	 * @param {DataConnection} client
-	 * @param data
-	 * @override
-	 */
-	onReceive(client, data) {
-		this.log('receiving', client.id, data)
+		// forward the broadcast to everyone else on client's behalf
+		if(data.__to === true) {
+			data = data.data
+			this.forward(client, data)
+		}
+
+		// receive a regular message
+		this.emit('data', {
+			from: client,
+			data,
+		})
 	}
 
 	/**
@@ -164,11 +143,11 @@ export default class Host extends Client {
 	/**
 	 * Send data to someone.
 	 *
-	 * @param {DataConnection} peer
+	 * @param {DataConnection} client
 	 * @param {*} data
 	 * @param {DataConnection=} from the client which actually sent the message
 	 */
-	sendTo(peer, data, from = null) {
+	sendTo(client, data, from = null) {
 		if(typeof from === 'string')
 			from = this.peers[from]
 
@@ -178,9 +157,10 @@ export default class Host extends Client {
 				__from: from.id,
 			}
 
-		// peer instanceof DataConnection === false ?!?!?
-		if(typeof peer.send === 'function') {
-			peer.send(data)
+		// client instanceof DataConnection === false ?!?!?
+		if(typeof client.send === 'function') {
+			this.log('Sending to', client.id, data)
+			client.send(data)
 			return true
 		}
 
@@ -244,13 +224,13 @@ export default class Host extends Client {
 	 * @param {string|DataConnection} conn
 	 * @return {DataConnection}
 	 */
-	toConnection(conn) {
-		if (typeof conn === 'string')
-			conn = this.peers[conn]
-
-		if(conn)
-			return conn
-
-		return false
-	}
+	//toConnection(conn) {
+	//	if (typeof conn === 'string')
+	//		conn = this.peers[conn]
+	//
+	//	if(conn)
+	//		return conn
+	//
+	//	return false
+	//}
 }
