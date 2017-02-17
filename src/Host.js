@@ -111,17 +111,17 @@ export default class Host extends Client {
 	 * @event data
 	 */
 	receive(client, data) {
-		// send a direct message on behalf
-		if(data.__to && data.__to !== true) {
-			const other = this.peers[data.__to]
-			if(other)
-				this.sendTo(other, data.data, client)
-		}
-
-		// forward the broadcast to everyone else on client's behalf
-		if(data.__to === true) {
-			data = data.data
-			this.forward(client, data)
+		if(data.__to) {
+			// forward the broadcast to everyone else on client's behalf
+			if(data.__to === true) {
+				data = data.data
+				this.forward(client, data)
+			} else { // send a direct message on behalf
+				const other = this.peers[data.__to]
+				if (other)
+					this.sendTo(other, data.data, client)
+				return false
+			}
 		}
 
 		// receive a regular message
@@ -150,6 +150,9 @@ export default class Host extends Client {
 	sendTo(client, data, from = null) {
 		if(typeof from === 'string')
 			from = this.peers[from]
+
+		if(typeof client === 'string')
+			client = this.peers[client]
 
 		if(from)
 			data = {
