@@ -4,6 +4,8 @@ import Client from './Client'
 /**
  * @fires error
  * @fires ready
+ * @fires offline
+ * @fires online
  * @fires quit
  * @fires connection
  * @fires disconnection
@@ -40,9 +42,8 @@ export default class Host extends Client {
 		this.peer = new Peer(hostID, options)
 		this.peer.on('open', id => this.emit('ready', id))
 		this.peer.on('connection', (c) => this.connection(c, version))
-		this.peer.on('close', this.disconnect.bind(this))
 		this.peer.on('error', this.errorHandler.bind(this))
-		this.peer.on('destroy', this.quit.bind(this))
+		this.peer.on('close', this.quit.bind(this))
 	}
 
 	/**
@@ -81,6 +82,24 @@ export default class Host extends Client {
 	}
 
 	/**
+	 * With all connections ready, we don't need to be in the server anymore.
+	 * @event offline
+	 */
+	ready() {
+		this.peer.disconnect()
+		this.emit('offline')
+	}
+
+	/**
+	 * Connect back to the server.
+	 * @event online
+	 */
+	unready() {
+		this.peer.reconnect()
+		this.emit('online')
+	}
+
+	/**
 	 * A client has left the game.
 	 *
 	 * @param {DataConnection} client
@@ -98,6 +117,10 @@ export default class Host extends Client {
 			this.emit('disconnection', client)
 			return true
 		}
+
+		// give the client a chance to reconnect
+		this.unready()
+		setTimeout(() => this.ready(), 10000)
 
 		return false
 	}
