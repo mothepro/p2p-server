@@ -235,14 +235,7 @@ export default class Host extends Client {
 	 * @returns {DataConnection[]} Array of all the connections.
 	 */
 	get clients() {
-		const ret = []
-
-		for(const id of this.clientIDs) {
-			if(this.peers[id])
-				ret.push(this.peers[id])
-		}
-
-		return ret
+		return this.clientIDs.map(id => this.peers[id])
 	}
 
 	/**
