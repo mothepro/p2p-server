@@ -1,6 +1,6 @@
 {
   "name": "p2p-server",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "A server-client library built using peerjs. (No server needed)",
   "main": "lib/index.js",
   "scripts": {
