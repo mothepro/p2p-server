@@ -69,6 +69,7 @@ export default class Host extends Client {
 	connection(client, version = '0') {
 		if(client.metadata.version !== version) {
 			this.errorHandler(Error(`Version of client "${client.metadata.version}" doesn't match host "${version}".`))
+			this.disconnect(client)
 			return
 		}
 
@@ -115,12 +116,15 @@ export default class Host extends Client {
 			this.clientIDs.splice(i, 1) //delete this.clientIDs[i]
 			delete this.peers[client.id]
 			this.emit('disconnection', client)
+			client.close()
 			return true
 		}
 
 		// give the client a chance to reconnect
-		this.unready()
-		setTimeout(() => this.ready(), 10000)
+		if(this.peer.disconnected) {
+			this.unready()
+			setTimeout(() => this.ready(), 10000)
+		}
 
 		return false
 	}
