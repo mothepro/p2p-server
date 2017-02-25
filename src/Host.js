@@ -68,8 +68,12 @@ export default class Host extends Client {
 	 */
 	connection(client, version = '0') {
 		if(client.metadata.version !== version) {
-			this.errorHandler(Error(`Version of client "${client.metadata.version}" doesn't match host "${version}".`))
-			this.disconnect(client)
+			const e = Error(`Version of client "${client.metadata.version}" doesn't match host "${version}".`)
+			this.errorHandler(e)
+			client.on('open', () => {
+				this.sendTo(client, e)
+				client.close()
+			})
 			return
 		}
 
@@ -151,11 +155,19 @@ export default class Host extends Client {
 			}
 		}
 
-		// receive a regular message
-		this.emit('data', {
-			from: client,
-			data,
-		})
+		if(data.__error) {
+			const error = Error(data.__error.message)
+			if(data.__error.name)
+				error.name = data.__error.name
+
+			this.errorHandler(error)
+		} else {
+			// receive a regular message
+			this.emit('data', {
+				from: client,
+				data,
+			})
+		}
 	}
 
 	/**
@@ -180,6 +192,16 @@ export default class Host extends Client {
 
 		if(typeof client === 'string')
 			client = this.peers[client]
+
+		// Send errors properly
+		if(data instanceof Error) {
+			data = {
+				__error: {
+					message: data.message,
+					name: data.name,
+				}
+			}
+		}
 
 		if(from)
 			data = {

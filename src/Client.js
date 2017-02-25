@@ -120,7 +120,12 @@ export default class Client extends EventEmitter {
 	 * @event data
 	 */
 	receive(data) {
-		if(data.__from)
+		if(data.__error) {
+			const error = Error(data.__error.message)
+			if(data.__error.name)
+				error.name = data.__error.name
+			this.errorHandler(error)
+		} else if(data.__from)
 			this.emit('data', {
 				from: data.__from,
 				data: data.data,
@@ -139,6 +144,16 @@ export default class Client extends EventEmitter {
 	 * @param {?string} to Connection to send to, leave empty for host
 	 */
 	send(data, to = null) {
+		// Send errors property
+		if(data instanceof Error) {
+			data = {
+				__error: {
+					message: data.message,
+					name: data.name,
+				}
+			}
+		}
+
 		if(to)
 			data = {
 				data,
