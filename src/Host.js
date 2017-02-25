@@ -241,19 +241,4 @@ export default class Host extends Client {
 	get clients() {
 		return this.clientIDs.map(id => this.peers[id])
 	}
-
-	/**
-	 * Convert an id into DataConnection
-	 * @param {string|DataConnection} conn
-	 * @return {DataConnection}
-	 */
-	//toConnection(conn) {
-	//	if (typeof conn === 'string')
-	//		conn = this.peers[conn]
-	//
-	//	if(conn)
-	//		return conn
-	//
-	//	return false
-	//}
 }

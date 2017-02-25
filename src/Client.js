@@ -136,9 +136,9 @@ export default class Client extends EventEmitter {
 	 * Send data to the host.
 	 *
 	 * @param data
-	 * @param {string=} to Connection to send to, leave empty for host
+	 * @param {?string} to Connection to send to, leave empty for host
 	 */
-	send(data, to = '') {
+	send(data, to = null) {
 		if(to)
 			data = {
 				data,
