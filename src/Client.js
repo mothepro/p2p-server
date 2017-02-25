@@ -66,8 +66,12 @@ export default class Client extends EventEmitter {
 	 */
 	errorHandler(e) {
 		// Handle errors with the connection to the host.
-		if(e.type === 'peer-unavailable') {
+		if (e.type === 'peer-unavailable') {
 			this.log('Unable to connect to the host. Make a new instance, or reload')
+			this.quit()
+			return
+		} else if (e.name = 'version') {
+			this.log(e.message)
 			this.quit()
 			return
 		}

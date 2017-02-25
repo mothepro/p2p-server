@@ -69,6 +69,7 @@ export default class Host extends Client {
 	connection(client, version = '0') {
 		if(client.metadata.version !== version) {
 			const e = Error(`Version of client "${client.metadata.version}" doesn't match host "${version}".`)
+			e.name = 'version'
 			this.errorHandler(e)
 			client.on('open', () => {
 				this.sendTo(client, e)
