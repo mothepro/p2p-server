@@ -224,7 +224,7 @@ export default class Client extends EventEmitter {
 	 * Handles any encoded data.
 	 * Emits errorHandler if data is an error.
 	 * @param {*} data
-	 * @return {boolean} True if nothing special occurred.
+	 * @return {boolean} False if nothing special occurred.
 	 */
 	decode(data) {
 		if(data.__error) {
@@ -233,9 +233,9 @@ export default class Client extends EventEmitter {
 				error.name = data.__error.name
 
 			this.errorHandler(error)
-			return false
+			return true
 		}
 
-		return true
+		return false
 	}
 }
