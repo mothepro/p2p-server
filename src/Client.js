@@ -128,21 +128,18 @@ export default class Client extends EventEmitter {
 	 * @event data
 	 */
 	receive(data) {
-		if(data.__error) {
-			const error = Error(data.__error.message)
-			if(data.__error.name)
-				error.name = data.__error.name
-			this.errorHandler(error)
-		} else if(data.__from)
-			this.emit('data', {
-				from: data.__from,
-				data: data.data,
-			})
-		else
-			this.emit('data', {
-				from: this.host.id,
-				data: data,
-			})
+		if(!this.decode(data)) {
+			if(data.__from)
+				this.emit('data', {
+					from: data.__from,
+					data: data.data,
+				})
+			else
+				this.emit('data', {
+					from: this.host.id,
+					data: data,
+				})
+		}
 	}
 
 	/**
@@ -206,6 +203,12 @@ export default class Client extends EventEmitter {
 		}
 	}
 
+	/**
+	 * Encode special data if necessary.
+	 * 1. Converts Errors into json object.
+	 * @param {*} data
+	 * @return {*}
+	 */
 	static encode(data) {
 		if(data instanceof Error)
 			return {
@@ -215,5 +218,24 @@ export default class Client extends EventEmitter {
 				}
 			}
 		return data
+	}
+
+	/**
+	 * Handles any encoded data.
+	 * Emits errorHandler if data is an error.
+	 * @param {*} data
+	 * @return {boolean} True if nothing special occurred.
+	 */
+	decode(data) {
+		if(data.__error) {
+			const error = Error(data.__error.message)
+			if(data.__error.name)
+				error.name = data.__error.name
+
+			this.errorHandler(error)
+			return false
+		}
+
+		return true
 	}
 }

@@ -155,14 +155,8 @@ export default class Host extends Client {
 			}
 		}
 
-		if(data.__error) {
-			const error = Error(data.__error.message)
-			if(data.__error.name)
-				error.name = data.__error.name
-
-			this.errorHandler(error)
-		} else {
-			// receive a regular message
+		// receive a regular message
+		if(!this.decode(data)) {
 			this.emit('data', {
 				from: client,
 				data,
