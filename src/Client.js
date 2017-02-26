@@ -63,17 +63,21 @@ export default class Client extends EventEmitter {
 	 * @param {Error} e the error
 	 * @protected
 	 * @event error
+	 * @event disconnection
 	 */
 	errorHandler(e) {
 		// Handle errors with the connection to the host.
 		if (e.type === 'peer-unavailable') {
 			this.log('Unable to connect to the host. Make a new instance, or reload')
 			this.quit()
-			return
 		} else if (e.name = 'version') {
 			this.log(e.message)
-			this.quit()
-			return
+			// Close if I am a client
+			if(this.clientMap === undefined) {
+				this.host.removeAllListeners()
+				this.emit('disconnection') // because we emitted 'connection'
+				this.quit()
+			}
 		}
 
 		this.emit('error', e)
@@ -148,15 +152,7 @@ export default class Client extends EventEmitter {
 	 * @param {?string} to Connection to send to, leave empty for host
 	 */
 	send(data, to = null) {
-		// Send errors property
-		if(data instanceof Error) {
-			data = {
-				__error: {
-					message: data.message,
-					name: data.name,
-				}
-			}
-		}
+		data = this.constructor.encode(data)
 
 		if(to)
 			data = {
@@ -208,5 +204,16 @@ export default class Client extends EventEmitter {
 			this.peer.destroy()
 			this.emit('quit')
 		}
+	}
+
+	static encode(data) {
+		if(data instanceof Error)
+			return {
+				__error: {
+					message: data.message,
+					name: data.name,
+				}
+			}
+		return data
 	}
 }

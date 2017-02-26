@@ -30,7 +30,7 @@ export default class Host extends Client {
 		 * Hashmap of all active connection.
 		 * @type {Object.<string, DataConnection>}
 		 */
-		this.peers = {}
+		this.clientMap = {}
 
 		/**
 		 * IDs of the connections
@@ -68,23 +68,22 @@ export default class Host extends Client {
 	 */
 	connection(client, version = '0') {
 		if(client.metadata.version !== version) {
-			const e = Error(`Version of client "${client.metadata.version}" doesn't match host "${version}".`)
-			e.name = 'version'
-			this.errorHandler(e)
 			client.on('open', () => {
+				const e = Error(`Version of client "${client.metadata.version}" doesn't match host "${version}".`)
+				e.name = 'version'
+
 				this.sendTo(client, e)
-				client.close()
+				this.errorHandler(e)
 			})
-			return
+		} else {
+			this.clientMap[client.id] = client
+			this.clientIDs.push(client.id)
+
+			client.on('open', () => this.emit('connection', client))
+			client.on('data', data => this.receive(client, data))
+			client.on('close', this.disconnect.bind(this, client))
+			client.on('error', this.errorHandler.bind(this))
 		}
-
-		this.peers[client.id] = client
-		this.clientIDs.push(client.id)
-
-		client.on('open', () => this.emit('connection', client))
-		client.on('data', data => this.receive(client, data))
-		client.on('close', this.disconnect.bind(this, client))
-		client.on('error', this.errorHandler.bind(this))
 	}
 
 	/**
@@ -119,7 +118,7 @@ export default class Host extends Client {
 
 		if(i !== -1) {
 			this.clientIDs.splice(i, 1) //delete this.clientIDs[i]
-			delete this.peers[client.id]
+			delete this.clientMap[client.id]
 			this.emit('disconnection', client)
 			client.close()
 			return true
@@ -149,7 +148,7 @@ export default class Host extends Client {
 				data = data.data
 				this.forward(client, data)
 			} else { // send a direct message on behalf
-				const other = this.peers[data.__to]
+				const other = this.clientMap[data.__to]
 				if (other)
 					this.sendTo(other, data.data, client)
 				return false
@@ -189,20 +188,14 @@ export default class Host extends Client {
 	 */
 	sendTo(client, data, from = null) {
 		if(typeof from === 'string')
-			from = this.peers[from]
+			from = this.clientMap[from]
 
 		if(typeof client === 'string')
-			client = this.peers[client]
+			client = this.clientMap[client]
 
-		// Send errors properly
-		if(data instanceof Error) {
-			data = {
-				__error: {
-					message: data.message,
-					name: data.name,
-				}
-			}
-		}
+		if(data instanceof Error)
+			this.doNotLog = true
+		data = this.constructor.encode(data)
 
 		if(from)
 			data = {
@@ -212,7 +205,11 @@ export default class Host extends Client {
 
 		// client instanceof DataConnection === false ?!?!?
 		if(typeof client.send === 'function') {
-			this.log('Sending to', client.id, data)
+			if(this.doNotLog === undefined)
+				this.log('Sending to', client.id, data)
+			else
+				delete this.doNotLog
+
 			client.send(data)
 			return true
 		}
@@ -229,13 +226,11 @@ export default class Host extends Client {
 		if(this.clientIDs.length === 0)
 			return
 
-		const tmp = this.log
-		this.log = () => {}
-
-		for(let client of this.clients)
+		for(let client of this.clients) {
+			this.doNotLog = true
 			this.sendTo(client, data)
+		}
 
-		this.log = tmp
 		this.log('Broadcasting', data)
 	}
 
@@ -248,7 +243,7 @@ export default class Host extends Client {
 	 */
 	forward(client, data) {
 		if (typeof client === 'string') {
-			client = this.peers[client]
+			client = this.clientMap[client]
 		}
 
 		const skip = this.clientIDs.indexOf(client.id)
@@ -256,7 +251,7 @@ export default class Host extends Client {
 		for(const index in this.clientIDs) {
 			if (index == skip) continue
 
-			this.sendTo(this.peers[this.clientIDs[index]], data, client)
+			this.sendTo(this.clientMap[this.clientIDs[index]], data, client)
 		}
 
 		this.log('Forwarding', data)
@@ -266,6 +261,6 @@ export default class Host extends Client {
 	 * @returns {DataConnection[]} Array of all the connections.
 	 */
 	get clients() {
-		return this.clientIDs.map(id => this.peers[id])
+		return this.clientIDs.map(id => this.clientMap[id])
 	}
 }
