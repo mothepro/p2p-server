@@ -229,9 +229,13 @@ export default class Host extends Client {
 		if(this.clientIDs.length === 0)
 			return
 
+		const tmp = this.log
+		this.log = () => {}
+
 		for(let client of this.clients)
 			this.sendTo(client, data)
 
+		this.log = tmp
 		this.log('Broadcasting', data)
 	}
 
