@@ -176,6 +176,7 @@ export default class Host extends Client {
 	/**
 	 * Send data to someone.
 	 *
+	 * TODO combine this method with send method.
 	 * @param {DataConnection} client
 	 * @param {*} data
 	 * @param {DataConnection=} from the client which actually sent the message

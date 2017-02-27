@@ -70,7 +70,7 @@ export default class Client extends EventEmitter {
 		if (e.type === 'peer-unavailable') {
 			this.log('Unable to connect to the host. Make a new instance, or reload')
 			this.quit()
-		} else if (e.name = 'version') {
+		} else if (e.name === 'version') {
 			this.log(e.message)
 			// Close if I am a client
 			if(this.clientMap === undefined) {
