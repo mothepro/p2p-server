@@ -210,13 +210,13 @@ export default class Client extends EventEmitter {
 	 * @return {*}
 	 */
 	static encode(data) {
-		if(data instanceof Error)
-			return {
-				__error: {
-					message: data.message,
-					name: data.name,
-				}
-			}
+		if(data instanceof Error) {
+			const obj = Object.assign({}, data)
+			obj.message = data.message
+
+			return {__error: obj}
+		}
+
 		return data
 	}
 
@@ -229,8 +229,10 @@ export default class Client extends EventEmitter {
 	decode(data) {
 		if(data.__error) {
 			const error = Error(data.__error.message)
-			if(data.__error.name)
-				error.name = data.__error.name
+			delete data.__error.message
+
+			for(const key of Object.keys(data.__error))
+				error[key] = data.__error[key]
 
 			this.errorHandler(error)
 			return true
