@@ -2,7 +2,6 @@ import Peer from 'peerjs'
 import Client from './Client'
 
 /**
- * @fires error
  * @fires ready
  * @fires offline
  * @fires online
@@ -27,16 +26,10 @@ export default class Host extends Client {
 		hostID = Host.randomID(),
 	}) {
 		/**
-		 * Hashmap of all active connection.
-		 * @type {Object.<string, DataConnection>}
+		 * Hashmap of all active connections.
+		 * @type {Map<string, DataConnection>}
 		 */
-		this.clientMap = {}
-
-		/**
-		 * IDs of the connections
-		 * @type {string[]}
-		 */
-		this.clientIDs = []
+		this.clients = new Map
 
 		/** @type {Peer} */
 		this.peer = new Peer(hostID, options)
@@ -76,8 +69,7 @@ export default class Host extends Client {
 				this.errorHandler(e)
 			})
 		} else {
-			this.clientMap[client.id] = client
-			this.clientIDs.push(client.id)
+			this.clients.set(client.id, client)
 
 			client.on('open', () => this.emit('connection', client))
 			client.on('data', data => this.receive(client, data))
@@ -114,11 +106,9 @@ export default class Host extends Client {
 	 */
 	disconnect(client) {
 		this.log('closing with', client.id)
-		const i = this.clientIDs.indexOf(client.id)
 
-		if(i !== -1) {
-			this.clientIDs.splice(i, 1) //delete this.clientIDs[i]
-			delete this.clientMap[client.id]
+		if(this.clients.has(client.id)) {
+			this.clients.delete(client.id)
 			this.emit('disconnection', client)
 			client.close()
 			return true
@@ -148,7 +138,7 @@ export default class Host extends Client {
 				data = data.data
 				this.forward(client, data)
 			} else { // send a direct message on behalf
-				const other = this.clientMap[data.__to]
+				const other = this.clients.get(data.__to)
 				if (other)
 					this.sendTo(other, data.data, client)
 				return false
@@ -183,10 +173,10 @@ export default class Host extends Client {
 	 */
 	sendTo(client, data, from = null) {
 		if(typeof from === 'string')
-			from = this.clientMap[from]
+			from = this.clients.get(from)
 
 		if(typeof client === 'string')
-			client = this.clientMap[client]
+			client = this.clients.get(client)
 
 		if(data instanceof Error)
 			this.doNotLog = true
@@ -218,10 +208,10 @@ export default class Host extends Client {
 	 * @param data
 	 */
 	broadcast(data) {
-		if(this.clientIDs.length === 0)
+		if(this.clients.size === 0)
 			return
 
-		for(let client of this.clients) {
+		for(const client of this.clients.values()) {
 			this.doNotLog = true
 			this.sendTo(client, data)
 		}
@@ -237,25 +227,14 @@ export default class Host extends Client {
 	 * @param data
 	 */
 	forward(client, data) {
-		if (typeof client === 'string') {
-			client = this.clientMap[client]
-		}
+		if (typeof client === 'string')
+			client = this.clients.get(client)
 
-		const skip = this.clientIDs.indexOf(client.id)
-
-		for(const index in this.clientIDs) {
-			if (index == skip) continue
-
-			this.sendTo(this.clientMap[this.clientIDs[index]], data, client)
+		for(const [id, connection] of this.clients) {
+			if (id === client.id) continue
+			this.sendTo(connection, data, client)
 		}
 
 		this.log('Forwarding', data)
-	}
-
-	/**
-	 * @returns {DataConnection[]} Array of all the connections.
-	 */
-	get clients() {
-		return this.clientIDs.map(id => this.clientMap[id])
 	}
 }

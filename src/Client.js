@@ -73,7 +73,7 @@ export default class Client extends EventEmitter {
 		} else if (e.name === 'version') {
 			this.log(e.message)
 			// Close if I am a client
-			if(this.clientMap === undefined) {
+			if(typeof this.clients === 'undefined') {
 				this.host.removeAllListeners()
 				this.emit('disconnection') // because we emitted 'connection'
 				this.quit()
