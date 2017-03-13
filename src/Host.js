@@ -167,9 +167,9 @@ export default class Host extends Client {
 	 * Send data to someone.
 	 *
 	 * TODO combine this method with send method.
-	 * @param {DataConnection} client
+	 * @param {DataConnection|string} client
 	 * @param {*} data
-	 * @param {DataConnection=} from the client which actually sent the message
+	 * @param {DataConnection|string=} from the client which actually sent the message
 	 */
 	sendTo(client, data, from = null) {
 		if(typeof from === 'string')
@@ -188,7 +188,6 @@ export default class Host extends Client {
 				__from: from.id,
 			}
 
-		// client instanceof DataConnection === false ?!?!?
 		if(typeof client.send === 'function') {
 			if(this.doNotLog === undefined)
 				this.log('Sending to', client.id, data)
@@ -197,7 +196,8 @@ export default class Host extends Client {
 
 			client.send(data)
 			return true
-		}
+		} else
+			this.errorHandler(Error('client is not an instance of DataConnection.'))
 
 		return false
 	}
