@@ -163,7 +163,7 @@ export default class Client extends EventEmitter {
 
 	/**
 	 * Tell the host to broadcast this message.
-	 *
+	 * Then, receive it for myself.
 	 * @param data
 	 */
 	broadcast(data) {
@@ -171,6 +171,7 @@ export default class Client extends EventEmitter {
 			data,
 			__to: true,
 		})
+		this.receive(data)
 		this.log('broadcasting', data)
 	}
 
@@ -215,6 +216,10 @@ export default class Client extends EventEmitter {
 			obj.message = data.message
 
 			return {__error: obj}
+		} else if(data instanceof Map) {
+			return {
+				__map: [...data]
+			}
 		}
 
 		return data
@@ -227,7 +232,7 @@ export default class Client extends EventEmitter {
 	 * @return {boolean} False if nothing special occurred.
 	 */
 	decode(data) {
-		if(data.__error) {
+		if('__error' in data) {
 			const error = Error(data.__error.message)
 			delete data.__error.message
 
@@ -236,6 +241,8 @@ export default class Client extends EventEmitter {
 
 			this.errorHandler(error)
 			return true
+		} else if ('__map' in data) {
+			data.__map = new Map(data.__map)
 		}
 
 		return false
