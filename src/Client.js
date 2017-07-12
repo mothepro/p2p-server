@@ -1,5 +1,26 @@
 import Peer from 'peerjs'
 import EventEmitter from 'events'
+import {encode, decode, createCodec} from 'msgpack-lite'
+
+// Override codecs for Map's and Errors
+const codec = createCodec()
+codec.addExtPacker(0x1C, Map, [map => [...map], encode])
+codec.addExtUnpacker(0x1C, [decode, entries => new Map(entries)])
+
+codec.addExtPacker(0x0E, Error, errData => {
+	const obj = Object.assign({}, errData)
+	obj.message = errData.message
+	return encode(errData)
+})
+codec.addExtUnpacker(0x0E, data => {
+	const errData = decode(data)
+	const error = Error(errData.message)
+
+	for(const key of Object.keys(errData))
+		error[key] = errData[key]
+
+	return error
+})
 
 /**
  * @fires error
@@ -23,7 +44,7 @@ export default class Client extends EventEmitter {
 		key,
 		version,
 		hostID,
-		logger,
+		logger = null,
 		options = {
 			secure: false,
 		},
@@ -128,18 +149,20 @@ export default class Client extends EventEmitter {
 	 * @event data
 	 */
 	receive(data) {
-		if(!this.decode(data)) {
-			if(data.__from)
-				this.emit('data', {
-					from: data.__from,
-					data: data.data,
-				})
-			else
-				this.emit('data', {
-					from: this.host.id,
-					data: data,
-				})
-		}
+		const decodedData = decode(data, {codec})
+
+		if (decodedData instanceof Error)
+			this.errorHandler(decodedData)
+		else if (typeof decodedData === 'object' && '__from' in decodedData)
+			this.emit('data', {
+				from: decodedData.__from,
+				data: decodedData.data,
+			})
+		else
+			this.emit('data', {
+				from: this.host.id,
+				data: decodedData,
+			})
 	}
 
 	/**
@@ -149,16 +172,16 @@ export default class Client extends EventEmitter {
 	 * @param {?string} to Connection to send to, leave empty for host
 	 */
 	send(data, to = null) {
-		data = this.constructor.encode(data)
-
 		if(to)
 			data = {
 				data,
 				__to: to,
 			}
 
-		this.host.send(data)
-		this.log('sending', data)
+		const encodedData = encode(data, {codec})
+
+		this.host.send(encodedData)
+		this.log('sending', encodedData)
 	}
 
 	/**
@@ -167,10 +190,10 @@ export default class Client extends EventEmitter {
 	 * @param data
 	 */
 	broadcast(data) {
-		this.host.send({
+		this.host.send(encode({
 			data,
 			__to: true,
-		})
+		}), {codec})
 		this.receive(data)
 		this.log('broadcasting', data)
 	}
@@ -202,49 +225,5 @@ export default class Client extends EventEmitter {
 			this.peer.destroy()
 			this.emit('quit')
 		}
-	}
-
-	/**
-	 * Encode special data if necessary.
-	 * 1. Converts Errors into json object.
-	 * @param {*} data
-	 * @return {*}
-	 */
-	static encode(data) {
-		if(data instanceof Error) {
-			const obj = Object.assign({}, data)
-			obj.message = data.message
-
-			return {__error: obj}
-		} else if(data instanceof Map) {
-			return {
-				__map: [...data]
-			}
-		}
-
-		return data
-	}
-
-	/**
-	 * Handles any encoded data.
-	 * Emits errorHandler if data is an error.
-	 * @param {*} data
-	 * @return {boolean} False if nothing special occurred.
-	 */
-	decode(data) {
-		if('__error' in data) {
-			const error = Error(data.__error.message)
-			delete data.__error.message
-
-			for(const key of Object.keys(data.__error))
-				error[key] = data.__error[key]
-
-			this.errorHandler(error)
-			return true
-		} else if ('__map' in data) {
-			data.__map = new Map(data.__map)
-		}
-
-		return false
 	}
 }
