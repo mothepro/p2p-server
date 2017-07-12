@@ -19,6 +19,7 @@ export default class Host extends Client {
 	 * @param options for the Peer constructor.
 	 * @override
 	 * @event ready
+	 * @event online
 	 */
 	makePeer({
 		version,
@@ -37,6 +38,7 @@ export default class Host extends Client {
 		this.peer.on('connection', (c) => this.connection(c, version))
 		this.peer.on('error', this.errorHandler.bind(this))
 		this.peer.on('close', this.quit.bind(this))
+		this.emit('online')
 	}
 
 	/**
@@ -69,9 +71,11 @@ export default class Host extends Client {
 				this.errorHandler(e)
 			})
 		} else {
-			this.clients.set(client.id, client)
-
-			client.on('open', () => this.emit('connection', client))
+			// Only add player to list when they are ready to listen.
+			client.on('open', () => {
+				this.clients.set(client.id, client)
+				this.emit('connection', client)
+			})
 			client.on('data', data => this.receive(client, data))
 			client.on('close', this.disconnect.bind(this, client))
 			client.on('error', this.errorHandler.bind(this))
@@ -132,15 +136,18 @@ export default class Host extends Client {
 	 * @event data
 	 */
 	receive(client, data) {
-		if(data.__to) {
+		if('__to' in data) {
 			// forward the broadcast to everyone else on client's behalf
 			if(data.__to === true) {
 				data = data.data
-				this.forward(client, data)
+
+				// Send to all players except for one.
+				for(const [id, connection] of this.clients) {
+					if (id === client.id) continue
+					this.sendTo(connection, data, client)
+				}
 			} else { // send a direct message on behalf
-				const other = this.clients.get(data.__to)
-				if (other)
-					this.sendTo(other, data.data, client)
+				this.sendTo(data.__to, data.data, client)
 				return false
 			}
 		}
@@ -167,6 +174,7 @@ export default class Host extends Client {
 	 * Send data to someone.
 	 *
 	 * TODO combine this method with send method.
+	 * TODO if sending to yourself, emit the receive
 	 * @param {DataConnection|string} client
 	 * @param {*} data
 	 * @param {DataConnection|string=} from the client which actually sent the message
@@ -217,24 +225,5 @@ export default class Host extends Client {
 		}
 
 		this.log('Broadcasting', data)
-	}
-
-	/**
-	 * Send to all players except for one.
-	 * Useful for forwarding data from peer.
-	 *
-	 * @param {string|DataConnection} client the one to skip
-	 * @param data
-	 */
-	forward(client, data) {
-		if (typeof client === 'string')
-			client = this.clients.get(client)
-
-		for(const [id, connection] of this.clients) {
-			if (id === client.id) continue
-			this.sendTo(connection, data, client)
-		}
-
-		this.log('Forwarding', data)
 	}
 }
