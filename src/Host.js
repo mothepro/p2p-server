@@ -1,5 +1,5 @@
 import Peer from 'peerjs'
-import Client from './Client'
+import Client, {VersionError} from './Client'
 
 /**
  * @fires ready
@@ -64,8 +64,9 @@ export default class Host extends Client {
 	connection(client, version = '0') {
 		if(client.metadata.version !== version) {
 			client.on('open', () => {
-				const e = Error(`Version of client "${client.metadata.version}" doesn't match host "${version}".`)
-				e.name = 'version'
+				const e = VersionError(`Version of client "${client.metadata.version}" doesn't match host "${version}".`)
+				e.clientVersion = client.metadata.version
+				e.hostVersion = version
 
 				this.sendTo(client, e)
 				this.errorHandler(e)

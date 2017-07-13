@@ -1,26 +1,9 @@
 import Peer from 'peerjs'
 import EventEmitter from 'events'
-import {encode, decode, createCodec} from 'msgpack-lite'
+import {pack, unpack, registerError} from './Packer'
 
-// Override codecs for Map's and Errors
-const codec = createCodec()
-codec.addExtPacker(0x1C, Map, [map => [...map], encode])
-codec.addExtUnpacker(0x1C, [decode, entries => new Map(entries)])
-
-codec.addExtPacker(0x0E, Error, errData => {
-	const obj = Object.assign({}, errData)
-	obj.message = errData.message
-	return encode(errData)
-})
-codec.addExtUnpacker(0x0E, data => {
-	const errData = decode(data)
-	const error = Error(errData.message)
-
-	for(const key of Object.keys(errData))
-		error[key] = errData[key]
-
-	return error
-})
+export class VersionError extends Error {}
+registerError(0x1E, VersionError)
 
 /**
  * @fires error
@@ -91,7 +74,7 @@ export default class Client extends EventEmitter {
 		if (e.type === 'peer-unavailable') {
 			this.log('Unable to connect to the host. Make a new instance, or reload')
 			this.quit()
-		} else if (e.name === 'version') {
+		} else if (e instanceof VersionError) {
 			this.log(e.message)
 			// Close if I am a client
 			if(typeof this.clients === 'undefined') {
@@ -149,7 +132,7 @@ export default class Client extends EventEmitter {
 	 * @event data
 	 */
 	receive(data) {
-		const decodedData = decode(data, {codec})
+		const decodedData = unpack(data)
 
 		if (decodedData instanceof Error)
 			this.errorHandler(decodedData)
@@ -178,7 +161,7 @@ export default class Client extends EventEmitter {
 				__to: to,
 			}
 
-		const encodedData = encode(data, {codec})
+		const encodedData = pack(data)
 
 		this.host.send(encodedData)
 		this.log('sending', encodedData)
@@ -190,10 +173,10 @@ export default class Client extends EventEmitter {
 	 * @param data
 	 */
 	broadcast(data) {
-		this.host.send(encode({
+		this.host.send(pack({
 			data,
 			__to: true,
-		}), {codec})
+		}))
 		this.receive(data)
 		this.log('broadcasting', data)
 	}
