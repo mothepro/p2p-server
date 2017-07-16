@@ -1,5 +1,4 @@
-import EventEmitter from 'events'
-
+import * as EventEmitter from 'events'
 
 global.window = {
 	RTCIceCandidate: {},

@@ -1,11 +1,11 @@
-import should from 'should'
+import * as should from 'should'
+import * as Module from 'module'
 import MockPeer, {MockDataConnection} from './MockPeer'
-import Module from 'module'
 
 const originalRequire = Module.prototype.require;
 Module.prototype.require = function() {
 	if (arguments[0] === 'peerjs')
-		return MockPeer
+		return {default: MockPeer}
 	return originalRequire.apply(this, arguments)
 }
 

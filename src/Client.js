@@ -1,5 +1,5 @@
 import Peer from 'peerjs'
-import EventEmitter from 'events'
+import * as EventEmitter from 'events'
 import {pack, unpack, register, registerError} from './Packer'
 
 export class VersionError extends Error {}
