@@ -1,5 +1,5 @@
-export {default as Host} from './src/Host'
-export {default as Client} from './src/Client'
-export { Packer }
-
+import Host from './src/Host'
+import Client from './src/Client'
 import * as Packer from './src/Packer'
+
+export { Host, Client, Packer }

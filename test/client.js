@@ -6,7 +6,7 @@ const originalRequire = Module.prototype.require;
 Module.prototype.require = function() {
 	if (arguments[0] === 'peerjs')
 		return MockPeer
-	return originalRequire.apply(this, arguments);
+	return originalRequire.apply(this, arguments)
 }
 
 // Dynamic require to use PeerJS Mocker
