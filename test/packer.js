@@ -1,8 +1,8 @@
 import 'should'
 import {pack, unpack, registerError} from '../src/Packer'
 
-describe('Tests', () => {
-	it('of course', function () {
+describe('Packer', () => {
+	it('Complex', function () {
 		const data = {
 			"int": 1,
 			"float": 0.5,
@@ -13,14 +13,16 @@ describe('Tests', () => {
 				"foo",
 				"bar"
 			],
-			"object": {
-				"foo": 1,
-				"baz": 0.5
-			},
-			"map": new Map([
-				['hello', 'world'],
-				[1, 12345]
-			])
+			"inner": {
+				"object": {
+					"foo": 1,
+					"baz": 0.5
+				},
+				"map": new Map([
+					['hello', 'world'],
+					[1, 12345]
+				])
+			}
 		}
 
 		const actual = unpack(pack(data))

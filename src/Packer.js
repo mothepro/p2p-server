@@ -11,7 +11,7 @@ const errorMap = new Map([
 	[0x06, URIError],
 ])
 
-// Override codecs for Map's and Errors
+// Override codecs for Maps and Errors
 register(0x1C, Map, map => [...map], entries => new Map(entries))
 for(const [code, errType] of errorMap)
 	registerError(code, errType)
@@ -40,8 +40,8 @@ export const unpack = (data) => decode(data, {codec})
  * @param {function(<T>): cls} unpacker Convert a buffer into an instance of cls
  */
 export function register(code, cls, packer, unpacker) {
-	codec.addExtPacker(code, cls, [packer, encode])
-	codec.addExtUnpacker(code, [decode, unpacker])
+	codec.addExtPacker(code, cls, [packer, x => encode(x, {codec})])
+	codec.addExtUnpacker(code, [x => decode(x, {codec}), unpacker])
 }
 
 /**
