@@ -1,7 +1,7 @@
 import {encode, decode, createCodec} from 'msgpack-lite'
 
 const codec = createCodec({preset: true})
-const errorMap = new Map([
+const errorMap: Map<number, ErrorConstructor> = new Map([
 	[0x0E, Error],
 	[0x01, EvalError],
 	[0x02, RangeError],
@@ -21,25 +21,30 @@ for(const [code, errType] of errorMap)
  * @param {*} data
  * @return {Buffer}
  */
-export const pack = (data) => encode(data, {codec})
+export const pack = (data: any) => encode(data, {codec})
 
 /**
  * Unpack data into a useable format.
  * @param {Buffer} data
  * @return {*}
  */
-export const unpack = (data) => decode(data, {codec})
+export const unpack = (data: any) => decode(data, {codec})
 
 /**
  * Register an Extension type in the message pack codec
  *
- * @param {int} code should be an integer within the range of 0 and 127
+ * @param code should be an integer within the range of 0 and 127
  *  List of current ones: https://github.com/kawanet/msgpack-lite#extension-types
- * @param {constructor} cls Class to be encoded
- * @param {function(cls): <T>} packer Convert instance of cls into an object that can be packed
- * @param {function(<T>): cls} unpacker Convert a buffer into an instance of cls
+ * @param cls Class to be encoded
+ * @param packer Convert instance of cls into an object that can be packed
+ * @param unpacker Convert a buffer into an instance of cls
  */
-export function register(code, cls, packer, unpacker) {
+export function register<encInst, buff>(
+	code: number,
+	cls: {new(...args: any[]): encInst},
+	packer: (encInst) => buff,
+	unpacker: (buff) => encInst,
+) {
 	codec.addExtPacker(code, cls, [packer, x => encode(x, {codec})])
 	codec.addExtUnpacker(code, [x => decode(x, {codec}), unpacker])
 }
@@ -49,7 +54,10 @@ export function register(code, cls, packer, unpacker) {
  * @param code
  * @param cls
  */
-export function registerError(code, cls) {
+export function registerError<T extends Error>(
+	code: number,
+	cls: {new(message: string): T}
+) {
 	return register(code, cls, function (err) {
 		const obj = Object.assign({}, err)
 		obj.message = err.message

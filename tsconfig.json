@@ -1,0 +1,14 @@
+{
+  "compilerOptions": {
+    "module": "commonjs",
+    "target": "es3",
+    "sourceMap": true,
+    "allowJs": true,
+    "outDir": "./lib",
+    "lib": ["es2017"]
+  },
+  "exclude": [
+    "node_modules"
+  ],
+  "files": ["index.js"]
+}
