@@ -1,5 +1,6 @@
 import Peer from 'peerjs'
-import Client, {VersionError} from './Client'
+import {pack, unpack} from './Packer'
+import Client, {VersionError, Message, DirectMessage, BroadcastMessage} from './Client'
 
 /**
  * @fires ready
@@ -35,7 +36,7 @@ export default class Host extends Client {
 		/** @type {Peer} */
 		this.peer = new Peer(hostID, options)
 		this.peer.on('open', id => this.emit('ready', id))
-		this.peer.on('connection', (c) => this.connection(c, version))
+		this.peer.on('connection', c => this.connection(c, version))
 		this.peer.on('error', this.errorHandler.bind(this))
 		this.peer.on('close', this.quit.bind(this))
 		this.emit('online')
@@ -61,7 +62,7 @@ export default class Host extends Client {
 	 * @protected
 	 * @event connection
 	 */
-	connection(client, version = '0') {
+	connection(client, version) {
 		if(client.metadata.version !== version) {
 			client.on('open', () => {
 				const e = VersionError(`Version of client "${client.metadata.version}" doesn't match host "${version}".`)
@@ -77,7 +78,7 @@ export default class Host extends Client {
 				this.clients.set(client.id, client)
 				this.emit('connection', client)
 			})
-			client.on('data', data => this.receive(client, data))
+			client.on('data', data => this.receive(unpack(data), client))
 			client.on('close', this.disconnect.bind(this, client))
 			client.on('error', this.errorHandler.bind(this))
 		}
@@ -131,35 +132,37 @@ export default class Host extends Client {
 	/**
 	 * Parse a message to decide what to do.
 	 *
-	 * @param {DataConnection} client
-	 * @param data
+	 * @param {{to: string, data: *}} data
+	 * @param {DataConnection=} client
 	 * @protected
 	 * @event data
 	 */
-	receive(client, data) {
-		if('__to' in data) {
-			// forward the broadcast to everyone else on client's behalf
-			if(data.__to === true) {
-				data = data.data
+	receive(data, client = null) {
+		// Forward a message on behalf of someone
+		if (data instanceof DirectMessage) {
+			this.sendTo(data.to, data.data, client)
+			return false
+		}
 
-				// Send to all players except for one.
-				for(const [id, connection] of this.clients) {
-					if (id === client.id) continue
-					this.sendTo(connection, data, client)
-				}
-			} else { // send a direct message on behalf
-				this.sendTo(data.__to, data.data, client)
-				return false
+		// forward the broadcast to everyone else on client's behalf
+		if (data instanceof BroadcastMessage) {
+			// Send to all players except for one.
+			for(const [id, connection] of this.clients) {
+				if (id === client.id) continue
+				this.sendTo(connection, data.data, client)
 			}
+			this.emit('data', {
+				from: client,
+				data: data.data,
+			})
+			return
 		}
 
 		// receive a regular message
-		if(!this.decode(data)) {
-			this.emit('data', {
-				from: client,
-				data,
-			})
-		}
+		this.emit('data', {
+			from: client,
+			data,
+		})
 	}
 
 	/**
@@ -181,6 +184,8 @@ export default class Host extends Client {
 	 * @param {DataConnection|string=} from the client which actually sent the message
 	 */
 	sendTo(client, data, from = null) {
+		let message = data
+
 		if(typeof from === 'string')
 			from = this.clients.get(from)
 
@@ -189,13 +194,9 @@ export default class Host extends Client {
 
 		if(data instanceof Error)
 			this.doNotLog = true
-		data = this.constructor.encode(data)
 
 		if(from)
-			data = {
-				data,
-				__from: from.id,
-			}
+			message = new DirectMessage(from.id, data)
 
 		if(typeof client.send === 'function') {
 			if(this.doNotLog === undefined)
@@ -203,7 +204,7 @@ export default class Host extends Client {
 			else
 				delete this.doNotLog
 
-			client.send(data)
+			client.send(pack(message))
 			return true
 		} else
 			this.errorHandler(Error('client is not an instance of DataConnection.'))
@@ -225,6 +226,7 @@ export default class Host extends Client {
 			this.sendTo(client, data)
 		}
 
+		this.receive(data)
 		this.log('Broadcasting', data)
 	}
 }

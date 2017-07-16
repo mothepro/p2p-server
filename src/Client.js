@@ -1,9 +1,40 @@
 import Peer from 'peerjs'
 import EventEmitter from 'events'
-import {pack, unpack, registerError} from './Packer'
+import {pack, unpack, register, registerError} from './Packer'
 
 export class VersionError extends Error {}
+
+export class DirectMessage {
+	constructor(to, data) {
+		this.data = data
+		this.to = to
+	}
+
+	static pack(dm) {
+		return [dm.to, dm.data]
+	}
+
+	static unpack(data) {
+		return new DirectMessage(data[0], data[1])
+	}
+}
+export class BroadcastMessage {
+	constructor(data) {
+		this.data = data
+	}
+
+	static pack(message) {
+		return message.data
+	}
+
+	static unpack(data) {
+		return new BroadcastMessage(data)
+	}
+}
+
 registerError(0x1E, VersionError)
+register(0x08, DirectMessage, DirectMessage.pack, DirectMessage.unpack)
+register(0x09, BroadcastMessage, BroadcastMessage.pack, BroadcastMessage.unpack)
 
 /**
  * @fires error
@@ -31,7 +62,7 @@ export default class Client extends EventEmitter {
 		options = {
 			secure: false,
 		},
-	}) {
+	} = {}) {
 		super()
 
 		if (typeof logger === 'function') {
@@ -107,12 +138,13 @@ export default class Client extends EventEmitter {
 		this.host = this.peer.connect(hostID, {
 			metadata: {
 				version,
-			}
+			},
+			serialization: 'none',
 		})
 		this.host.on('error', this.errorHandler.bind(this))
 		this.host.on('close', this.disconnect.bind(this))
 		this.host.on('open', this.connection.bind(this))
-		this.host.on('data', this.receive.bind(this))
+		this.host.on('data', data => this.receive(unpack(data)))
 		this.emit('ready')
 	}
 
@@ -125,58 +157,52 @@ export default class Client extends EventEmitter {
 	}
 
 	/**
-	 * Receive some data from the host.
+	 * Receive some data from the host. (Message or DirectMessage)
 	 *
 	 * @param data
 	 * @protected
 	 * @event data
 	 */
 	receive(data) {
-		const decodedData = unpack(data)
-
-		if (decodedData instanceof Error)
-			this.errorHandler(decodedData)
-		else if (typeof decodedData === 'object' && '__from' in decodedData)
+		if (data instanceof Error)
+			this.errorHandler(data)
+		else if (data instanceof DirectMessage)
 			this.emit('data', {
-				from: decodedData.__from,
-				data: decodedData.data,
+				from: data.to,
+				data: data.data,
 			})
 		else
 			this.emit('data', {
 				from: this.host.id,
-				data: decodedData,
+				data,
 			})
 	}
 
 	/**
 	 * Send data to the host.
-	 *
+	 * Sends a Message or DirectMessage
 	 * @param data
 	 * @param {?string} to Connection to send to, leave empty for host
 	 */
 	send(data, to = null) {
+		let message = data
+
 		if(to)
-			data = {
-				data,
-				__to: to,
-			}
+			message = new DirectMessage(to, data)
 
-		const encodedData = pack(data)
-
-		this.host.send(encodedData)
-		this.log('sending', encodedData)
+		this.host.send(pack(message))
+		this.log('sending', data)
 	}
 
 	/**
 	 * Tell the host to broadcast this message.
 	 * Then, receive it for myself.
+	 * Sends a BroadcastMessage
 	 * @param data
 	 */
 	broadcast(data) {
-		this.host.send(pack({
-			data,
-			__to: true,
-		}))
+		this.host.send(pack(new BroadcastMessage(data)))
+		// TODO Where should the data be "from" if I broadcasted it???
 		this.receive(data)
 		this.log('broadcasting', data)
 	}

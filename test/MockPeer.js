@@ -109,21 +109,28 @@ export class MockDataConnection extends EventEmitter {
 		metadata = { version: '0' },
 		serialization = 'none',
 		reliable = false,
+		connectionId = `dc_${MockPeer.randomID()}`,
 	} = {}) {
 		super()
 		this.host = host
 		this.peer = this.host.id
 
-		this.open = true
+		this.open = false
 		this.type = 'data'
 		this.bufferSize = 0
 
+		this.id = connectionId
 		this.serialization = serialization
 		this.reliable = reliable
 		this.label = label
 		this.metadata = metadata
 
-		setTimeout(() => this.emit('open'), 0)
+		setTimeout(() => this.ready(), 0)
+	}
+
+	ready() {
+		this.open = true
+		this.emit('open')
 	}
 
 	send(data) {
