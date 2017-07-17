@@ -1,7 +1,6 @@
 import * as EventEmitter from 'events'
-
 // TODO Can this be done with Modular Resolution??
-import * as Module from 'module'
+const Module = require('module')
 const originalRequire = Module.prototype.require
 Module.prototype.require = function() {
 	if (arguments[0] === 'peerjs')
@@ -9,21 +8,23 @@ Module.prototype.require = function() {
 	return originalRequire.apply(this, arguments)
 }
 
-global.window = {
+global['window'] = {
 	RTCIceCandidate: {},
 	RTCSessionDescription: {},
 	RTCPeerConnection: {},
 }
 
-/** @type {Map<string, MockPeer} */
-const allPeers = new Map
+type peerID = string
+type dcID = string
+
+const allPeers: Map<peerID, MockPeer> = new Map
 
 export default class MockPeer extends EventEmitter {
-	/**
-	 * @param {string} id
-	 * @param options
-	 */
-	constructor(id = MockPeer.randomID(), options) {
+	destroyed: boolean = false
+	disconnected: boolean = false
+	connectionMap: Map<peerID, MockDataConnection> = new Map
+
+	constructor(public id: peerID = MockPeer.randomID(), options?: object) {
 		super()
 
 		if(typeof id === 'object') {
@@ -31,17 +32,11 @@ export default class MockPeer extends EventEmitter {
 			id = MockPeer.randomID()
 		}
 
-		this.id = id
-		this.destroyed = false
-		this.disconnected = false
-
-		this.connectionMap = new Map
-
 		allPeers.set(this.id, this)
 		setTimeout(() => this.emit('open', id), 0)
 	}
 
-	connect(id, options = null) {
+	connect(id: peerID, options?: object) {
 		const otherPeer =  allPeers.get(id)
 
 		const myData = new MockDataConnection(this, options)
@@ -64,7 +59,7 @@ export default class MockPeer extends EventEmitter {
 
 	reconnect() {
 		if(!this.disconnected) {
-			const err = Error('Must be disconnected to reconnect.')
+			const err = <any>Error('Must be disconnected to reconnect.')
 			err.type = 'disconnected'
 			this.emit('error', err)
 		}
@@ -79,27 +74,18 @@ export default class MockPeer extends EventEmitter {
 		this.emit('close')
 	}
 
-	/**
-	 * Convert map into object
-	 * @return {Object<string, *>}
-	 */
-	get connections() {
+	get connections(): { [id in peerID]: MockDataConnection } {
 		const connections = {}
 		for(const [id, connection] of this.connectionMap)
 			connections[id] = connection
 		return connections
 	}
 
-
-	/**
-	 * Generate a short random id
-	 * @returns {string} length is always 7
-	 */
-	static randomID() {
-		let ret = (new Date).getTime()
-		ret += Math.random()
-		ret *= 100
-		ret = Math.floor(ret).toString(36) // base 36
+	static randomID() : string {
+		let num = (new Date).getTime()
+		num += Math.random()
+		num *= 100
+		const ret = <string>Math.floor(num).toString(36) // base 36
 		return ret.substr(3, 7) // remove repetition
 	}
 }
@@ -108,24 +94,27 @@ export default class MockPeer extends EventEmitter {
  * A Mock of a WebRTC DataChannel
  */
 export class MockDataConnection extends EventEmitter {
-	/**
-	 * @param {MockPeer} host
-	 * @param {Object} options
-	 */
-	constructor(host, {
+	client: MockDataConnection
+	readonly peer: peerID = this.host.id
+
+	open: boolean = false
+
+	readonly type: string = 'data'
+	readonly bufferSize: number = 0
+	readonly id: dcID
+	readonly serialization: string
+	readonly reliable: boolean
+	readonly label: string
+	readonly metadata: Object
+
+	constructor(public host: MockPeer, {
 		label = '',
 		metadata = { version: '0' },
 		serialization = 'none',
 		reliable = false,
 		connectionId = `dc_${MockPeer.randomID()}`,
-	} = {}) {
+	}: any = {}) {
 		super()
-		this.host = host
-		this.peer = this.host.id
-
-		this.open = false
-		this.type = 'data'
-		this.bufferSize = 0
 
 		this.id = connectionId
 		this.serialization = serialization

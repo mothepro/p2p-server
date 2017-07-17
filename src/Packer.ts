@@ -1,7 +1,7 @@
 import {encode, decode, createCodec} from 'msgpack-lite'
 
 const codec = createCodec({preset: true})
-const errorMap: Map<number, ErrorConstructor> = new Map([
+const errorMap = new Map([
 	[0x0E, Error],
 	[0x01, EvalError],
 	[0x02, RangeError],
