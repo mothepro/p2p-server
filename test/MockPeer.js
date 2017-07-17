@@ -1,5 +1,14 @@
 import * as EventEmitter from 'events'
 
+// TODO Can this be done with Modular Resolution??
+import * as Module from 'module'
+const originalRequire = Module.prototype.require
+Module.prototype.require = function() {
+	if (arguments[0] === 'peerjs')
+		return {default: MockPeer}
+	return originalRequire.apply(this, arguments)
+}
+
 global.window = {
 	RTCIceCandidate: {},
 	RTCSessionDescription: {},

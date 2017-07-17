@@ -1,17 +1,7 @@
 import * as should from 'should'
-import * as Module from 'module'
 import MockPeer, {MockDataConnection} from './MockPeer'
-
-const originalRequire = Module.prototype.require;
-Module.prototype.require = function() {
-	if (arguments[0] === 'peerjs')
-		return {default: MockPeer}
-	return originalRequire.apply(this, arguments)
-}
-
-// Dynamic require to use PeerJS Mocker
-const {default: Client} = require( '../src/Client' )
-const {default: Host} = require( '../src/Host' )
+import Client from '../src/Client'
+import Host from '../src/Host'
 
 describe('Connecting', () => {
 	it('should connect', function (done) {
