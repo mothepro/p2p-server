@@ -5,8 +5,7 @@ import Host from '../src/Host'
 
 describe('Connecting', () => {
 	it('should connect', function (done) {
-		const hostID = 'pootis'
-		const host = new Host(hostID)
+		const host = new Host
 
 		host.once('ready', hostID => {
 			const friend = new Client({hostID})
@@ -59,7 +58,7 @@ describe('Messaging', () => {
 		const host = new Host({version})
 
 		host.once('ready', hostID => {
-			host.once('connection', hostConnectionToFriend => {
+			host.once('clitentConnection', hostConnectionToFriend => {
 				friend.once('data', ({from, data}) => {
 					//(from === undefined).should.be.true()
 					from.should.equal(friend.host.id)
@@ -86,8 +85,8 @@ describe('Messaging', () => {
 		const host = new Host({version})
 
 		host.once('ready', hostID => {
-			host.once('connection', hostConnectionToFriend => {
-				host.once('connection', hostConnectionToFriendTwo => {
+			host.once('clitentConnection', hostConnectionToFriend => {
+				host.once('clitentConnection', hostConnectionToFriendTwo => {
 					friend2.once('data', (msg) => {
 						msg.from.should.equal(hostConnectionToFriend.id)
 						message.should.eql(msg.data)
@@ -118,10 +117,10 @@ describe('Broadcasting', () => {
 
 		return new Promise((resolve, reject) => {
 			host.once('ready', hostID => {
-				host.once('connection', hostConnectionToFriend => {
+				host.once('clitentConnection', hostConnectionToFriend => {
 					host.clients.size.should.equal(1)
 
-					host.once('connection', hostConnectionToFriendTwo => {
+					host.once('clitentConnection', hostConnectionToFriendTwo => {
 						host.clients.size.should.equal(2)
 
 						let times = 0
@@ -171,10 +170,10 @@ describe('Broadcasting', () => {
 
 		return new Promise((resolve, reject) => {
 			host.once('ready', hostID => {
-				host.once('connection', hostConnectionToFriend => {
+				host.once('clitentConnection', hostConnectionToFriend => {
 					host.clients.size.should.equal(1)
 
-					host.once('connection', hostConnectionToFriendTwo => {
+					host.once('clitentConnection', hostConnectionToFriendTwo => {
 						host.clients.size.should.equal(2)
 
 						let times = 0

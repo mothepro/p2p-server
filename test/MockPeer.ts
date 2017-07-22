@@ -4,7 +4,7 @@ const Module = require('module')
 const originalRequire = Module.prototype.require
 Module.prototype.require = function() {
 	if (arguments[0] === 'peerjs')
-		return {default: MockPeer}
+		return MockPeer
 	return originalRequire.apply(this, arguments)
 }
 
@@ -23,12 +23,21 @@ export default class MockPeer extends EventEmitter {
 	destroyed: boolean = false
 	disconnected: boolean = false
 	connectionMap: Map<peerID, MockDataConnection> = new Map
+	off = this.removeListener
 
-	constructor(public id: peerID = MockPeer.randomID(), options?: object) {
+	// Un documented PeerJS features.
+    call(id: string, stream: any, options?: any): PeerJs.MediaConnection {
+    	return <PeerJs.MediaConnection>null
+	}
+    getConnection(peer: PeerJs.Peer, id: string): any {}
+    listAllPeers(callback: (peerIds: Array<string>)=>void): void {}
+
+	constructor(public id: any, options?: PeerJs.PeerJSOption) {
 		super()
 
-		if(typeof id === 'object') {
-			options = id
+		// only gave options
+		if(typeof id === 'object' || id === undefined) {
+			options = <PeerJs.PeerJSOption>id
 			id = MockPeer.randomID()
 		}
 
@@ -36,7 +45,7 @@ export default class MockPeer extends EventEmitter {
 		setTimeout(() => this.emit('open', id), 0)
 	}
 
-	connect(id: peerID, options?: object) {
+	connect(id: peerID, options?: PeerJs.PeerConnectOption): MockDataConnection {
 		const otherPeer =  allPeers.get(id)
 
 		const myData = new MockDataConnection(this, options)
@@ -100,12 +109,19 @@ export class MockDataConnection extends EventEmitter {
 	open: boolean = false
 
 	readonly type: string = 'data'
-	readonly bufferSize: number = 0
+	readonly buffSize: number = 0
 	readonly id: dcID
 	readonly serialization: string
 	readonly reliable: boolean
 	readonly label: string
 	readonly metadata: Object
+
+	readonly dataChannel: RTCDataChannel
+	readonly peerConnection: any
+	off = this.removeListener
+	removeAllListeners(event?: string) {
+		return this
+	}
 
 	constructor(public host: MockPeer, {
 		label = '',
@@ -144,3 +160,5 @@ export class MockDataConnection extends EventEmitter {
 		return this.client.host
 	}
 }
+
+exports = MockPeer

@@ -1,6 +1,9 @@
-import Peer from 'peerjs'
+const Peer = require('peerjs')
 import {pack, unpack} from './Packer'
-import Client, {VersionError, Message, DirectMessage, BroadcastMessage} from './Client'
+import Client, {VersionError, DirectMessage, BroadcastMessage} from './Client'
+
+type peerID = string
+type dcID = string
 
 /**
  * @fires ready
@@ -12,13 +15,18 @@ import Client, {VersionError, Message, DirectMessage, BroadcastMessage} from './
  * @fires data
  */
 export default class Host extends Client {
+	// Hashmap of all active connections.
+	public clients: Map<string, PeerJs.DataConnection> = new Map
+
+	public peer: PeerJs.Peer
+	private doNotLog: boolean = false
+
 	/**
 	 * Creates the Peer.
 	 *
-	 * @param {string} version version of top package, to make sure host and client are in sync.
-	 * @param {string} hostID ID to use as the hosting peer.
+	 * @param version version of top package, to make sure host and client are in sync.
+	 * @param hostID ID to use as the hosting peer.
 	 * @param options for the Peer constructor.
-	 * @override
 	 * @event ready
 	 * @event online
 	 */
@@ -27,45 +35,33 @@ export default class Host extends Client {
 		options,
 		hostID = Host.randomID(),
 	}) {
-		/**
-		 * Hashmap of all active connections.
-		 * @type {Map<string, DataConnection>}
-		 */
-		this.clients = new Map
-
-		/** @type {Peer} */
 		this.peer = new Peer(hostID, options)
 		this.peer.on('open', id => this.emit('ready', id))
-		this.peer.on('connection', c => this.connection(c, version))
+		this.peer.on('connection', c => this.clitentConnection(c, version))
 		this.peer.on('error', this.errorHandler.bind(this))
 		this.peer.on('close', this.quit.bind(this))
 		this.emit('online')
 	}
 
 	/**
-	 * Generate a short random id
-	 * @returns {string} length is always 7
+	 * Generate a short random id, length is always 7.
 	 */
-	static randomID() {
-		let ret = (new Date).getTime()
-		ret += Math.random()
-		ret *= 100
-		ret = Math.floor(ret).toString(36) // base 36
+	static randomID(): peerID {
+		let num = (new Date).getTime()
+		num += Math.random()
+		num *= 100
+		const ret = <string>Math.floor(num).toString(36) // base 36
 		return ret.substr(3, 7) // remove repetition
 	}
 
 	/**
 	 * Someone attempts to connect to us.
-	 *
-	 * @param {DataConnection} client
-	 * @param {string=} version
-	 * @protected
 	 * @event connection
 	 */
-	connection(client, version) {
+	protected clitentConnection(client: PeerJs.DataConnection, version?: string) {
 		if(client.metadata.version !== version) {
 			client.on('open', () => {
-				const e = VersionError(`Version of client "${client.metadata.version}" doesn't match host "${version}".`)
+				const e = <any>new VersionError(`Version of client "${client.metadata.version}" doesn't match host "${version}".`)
 				e.clientVersion = client.metadata.version
 				e.hostVersion = version
 
@@ -76,7 +72,7 @@ export default class Host extends Client {
 			// Only add player to list when they are ready to listen.
 			client.on('open', () => {
 				this.clients.set(client.id, client)
-				this.emit('connection', client)
+				this.emit('clitentConnection', client)
 			})
 			client.on('data', data => this.receive(unpack(data), client))
 			client.on('close', this.disconnect.bind(this, client))
@@ -104,13 +100,10 @@ export default class Host extends Client {
 
 	/**
 	 * A client has left the game.
-	 *
-	 * @param {DataConnection} client
-	 * @returns {boolean} whether the client was actually removed.
-	 * @protected
+	 * @returns whether the client was actually removed.
 	 * @event disconnection
 	 */
-	disconnect(client) {
+	protected disconnect(client?: PeerJs.DataConnection): boolean {
 		this.log('closing with', client.id)
 
 		if(this.clients.has(client.id)) {
@@ -131,13 +124,9 @@ export default class Host extends Client {
 
 	/**
 	 * Parse a message to decide what to do.
-	 *
-	 * @param {{to: string, data: *}} data
-	 * @param {DataConnection=} client
-	 * @protected
 	 * @event data
 	 */
-	receive(data, client = null) {
+	protected receive(data: {to: string, data: any}, client?: PeerJs.DataConnection): boolean {
 		// Forward a message on behalf of someone
 		if (data instanceof DirectMessage) {
 			this.sendTo(data.to, data.data, client)
@@ -163,6 +152,7 @@ export default class Host extends Client {
 			from: client,
 			data,
 		})
+		return true
 	}
 
 	/**
@@ -183,7 +173,7 @@ export default class Host extends Client {
 	 * @param {*} data
 	 * @param {DataConnection|string=} from the client which actually sent the message
 	 */
-	sendTo(client, data, from = null) {
+	sendTo(client: PeerJs.DataConnection | dcID, data, from?: PeerJs.DataConnection | dcID): boolean {
 		let message = data
 
 		if(typeof from === 'string')
@@ -214,10 +204,8 @@ export default class Host extends Client {
 
 	/**
 	 * Send to all connections.
-	 *
-	 * @param data
 	 */
-	broadcast(data) {
+	broadcast(data: any): void {
 		if(this.clients.size === 0)
 			return
 
