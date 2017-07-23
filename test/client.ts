@@ -1,5 +1,5 @@
 import * as should from 'should'
-import MockPeer, {MockDataConnection} from './MockPeer'
+import MockPeer, {MockDataConnection} from './stubs/MockPeer'
 import Client from '../src/Client'
 import Host from '../src/Host'
 
@@ -24,7 +24,7 @@ describe('Connecting', () => {
 
 describe('Messaging', () => {
 	it('should send a message to the host', function (done) {
-		const version = 6
+		const version = '6'
 		const message = {
 			hello: 'world'
 		}
@@ -48,7 +48,7 @@ describe('Messaging', () => {
 	})
 
 	it('should send a message to a client', function (done) {
-		const version = 6
+		const version = '6'
 		const message = {
 			name: 'mo',
 			age: 12.6,
@@ -75,7 +75,7 @@ describe('Messaging', () => {
 	})
 
 	it('should direct message another client', function (done) {
-		const version = 6
+		const version = '6'
 		const message = {
 			name: 'mo',
 			age: 12.6,
@@ -106,7 +106,7 @@ describe('Messaging', () => {
 
 describe('Broadcasting', () => {
 	it('should broadcast a message to clients', function () {
-		const version = 6
+		const version = '6'
 		const message = {
 			name: 'mo',
 			age: 12.6,
@@ -159,7 +159,7 @@ describe('Broadcasting', () => {
 	})
 
 	it('should broadcast a message to other clients', function () {
-		const version = 6
+		const version = '6'
 		const message = {
 			name: 'mo',
 			age: 12.6,

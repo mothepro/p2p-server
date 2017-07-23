@@ -20,7 +20,7 @@ describe('Packer', () => {
 				},
 				"map": new Map([
 					['hello', 'world'],
-					[1, 12345]
+					['1', '12345']
 				])
 			}
 		}
@@ -34,7 +34,7 @@ describe('Packer', () => {
 		class PootError extends Error {}
 		registerError(0xFF, PootError)
 
-		const error = new PootError('pootis')
+		const error = <any>new PootError('pootis')
 		error.columnNumber = 6
 		error.more = true
 		error.type = 'extra'

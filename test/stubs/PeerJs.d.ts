@@ -5,12 +5,13 @@ type RTCDataChannel = any
 
 declare namespace PeerJs {
     interface PeerJSOption {
-        logFunction: (...args: any[]) => void,
+        logFunction: (...args: any[]) => void
     }
 
     interface DataConnection {
-        removeAllListeners: () => void,
-        id: string,
+        removeAllListeners: () => void
+        id: string
+        connectedPeer: PeerJs.Peer
     }
 
     // interface Peer {

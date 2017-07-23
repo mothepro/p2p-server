@@ -1,4 +1,4 @@
-///<reference path="../test/PeerJs.d.ts" />
+///<reference path="../test/stubs/PeerJs.d.ts" />
 const Peer = require('peerjs')
 import * as EventEmitter from 'events'
 import {pack, unpack, register, registerError} from './Packer'
@@ -67,11 +67,11 @@ export default class Client extends EventEmitter {
 			secure: false,
 		},
 	}: {
-		key: string,
-		version: string,
-		hostID: peerID,
-		logger: (...args: any[]) => void,
-		options: any
+		key?: string,
+		version?: string,
+		hostID?: peerID,
+		logger?: (...args: any[]) => void,
+		options?: any
 	} = <any>{}) {
 		super()
 
