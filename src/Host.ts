@@ -10,13 +10,13 @@ type dcID = string
  * @fires offline
  * @fires online
  * @fires quit
- * @fires connection
+ * @fires clientConnection
  * @fires disconnection
  * @fires data
  */
 export default class Host extends Client {
 	// Hashmap of all active connections.
-	public clients: Map<string, PeerJs.DataConnection> = new Map
+	public clients: Map<dcID, PeerJs.DataConnection> = new Map
 
 	public peer: PeerJs.Peer
 	private doNotLog: boolean = false
@@ -37,7 +37,7 @@ export default class Host extends Client {
 	}) {
 		this.peer = new Peer(hostID, options)
 		this.peer.on('open', id => this.emit('ready', id))
-		this.peer.on('connection', c => this.clitentConnection(c, version))
+		this.peer.on('connection', c => this.clientConnection(c, version))
 		this.peer.on('error', this.errorHandler.bind(this))
 		this.peer.on('close', this.quit.bind(this))
 		this.emit('online')
@@ -56,9 +56,9 @@ export default class Host extends Client {
 
 	/**
 	 * Someone attempts to connect to us.
-	 * @event connection
+	 * @event clientConnection
 	 */
-	protected clitentConnection(client: PeerJs.DataConnection, version?: string) {
+	protected clientConnection(client: PeerJs.DataConnection, version?: string) {
 		if(client.metadata.version !== version) {
 			client.on('open', () => {
 				const e = <any>new VersionError(`Version of client "${client.metadata.version}" doesn't match host "${version}".`)
@@ -72,7 +72,7 @@ export default class Host extends Client {
 			// Only add player to list when they are ready to listen.
 			client.on('open', () => {
 				this.clients.set(client.id, client)
-				this.emit('clitentConnection', client)
+				this.emit('clientConnection', client)
 			})
 			client.on('data', data => this.receive(unpack(data), client))
 			client.on('close', this.disconnect.bind(this, client))

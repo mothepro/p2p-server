@@ -58,7 +58,7 @@ describe('Messaging', () => {
 		const host = new Host({version})
 
 		host.once('ready', hostID => {
-			host.once('clitentConnection', hostConnectionToFriend => {
+			host.once('clientConnection', hostConnectionToFriend => {
 				friend.once('data', ({from, data}) => {
 					//(from === undefined).should.be.true()
 					from.should.equal(friend.host.id)
@@ -85,8 +85,8 @@ describe('Messaging', () => {
 		const host = new Host({version})
 
 		host.once('ready', hostID => {
-			host.once('clitentConnection', hostConnectionToFriend => {
-				host.once('clitentConnection', hostConnectionToFriendTwo => {
+			host.once('clientConnection', hostConnectionToFriend => {
+				host.once('clientConnection', hostConnectionToFriendTwo => {
 					friend2.once('data', (msg) => {
 						msg.from.should.equal(hostConnectionToFriend.id)
 						message.should.eql(msg.data)
@@ -117,10 +117,10 @@ describe('Broadcasting', () => {
 
 		return new Promise((resolve, reject) => {
 			host.once('ready', hostID => {
-				host.once('clitentConnection', hostConnectionToFriend => {
+				host.once('clientConnection', hostConnectionToFriend => {
 					host.clients.size.should.equal(1)
 
-					host.once('clitentConnection', hostConnectionToFriendTwo => {
+					host.once('clientConnection', hostConnectionToFriendTwo => {
 						host.clients.size.should.equal(2)
 
 						let times = 0
@@ -170,10 +170,10 @@ describe('Broadcasting', () => {
 
 		return new Promise((resolve, reject) => {
 			host.once('ready', hostID => {
-				host.once('clitentConnection', hostConnectionToFriend => {
+				host.once('clientConnection', hostConnectionToFriend => {
 					host.clients.size.should.equal(1)
 
-					host.once('clitentConnection', hostConnectionToFriendTwo => {
+					host.once('clientConnection', hostConnectionToFriendTwo => {
 						host.clients.size.should.equal(2)
 
 						let times = 0

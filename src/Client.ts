@@ -102,8 +102,7 @@ export default class Client extends EventEmitter {
 
 	/**
 	 * Handle errors with the peer.
-	 * @event error
-	 * @event disconnection
+	 * @event error disconnection
 	 */
 	protected errorHandler(e: Error | any): void {
 		// Handle errors with the clitentConnection to the host.
