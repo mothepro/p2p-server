@@ -154,11 +154,6 @@ export class MockDataConnection extends EventEmitter {
 		this.open = false
 		this.emit('close')
 	}
-
-	/** @type {MockPeer} */
-	get connectedPeer() {
-		return this.client.host
-	}
 }
 
 exports = MockPeer
