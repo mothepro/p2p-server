@@ -11,10 +11,5 @@ declare namespace PeerJs {
     interface DataConnection {
         removeAllListeners: () => void
         id: string
-        connectedPeer: PeerJs.Peer
     }
-
-    // interface Peer {
-    //     new (options: PeerJs.PeerJSOption): PeerJs.Peer
-    // }
 }

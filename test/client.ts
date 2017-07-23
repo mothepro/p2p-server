@@ -3,6 +3,16 @@ import MockPeer, {MockDataConnection} from './stubs/MockPeer'
 import Client from '../src/Client'
 import Host from '../src/Host'
 
+/**
+ * Get the peer on the other side of the client
+ * @param peer
+ */
+function connectedPeer(peer: Client): MockPeer {
+	const mockPeer = <MockDataConnection>peer.host
+	const mockDC = mockPeer.client
+    return mockDC.host
+}
+
 describe('Connecting', () => {
 	it('should connect', function (done) {
 		const host = new Host
@@ -15,7 +25,7 @@ describe('Connecting', () => {
 				friend.peer.should.be.instanceof(MockPeer)
 				friend.host.should.be.instanceof(MockDataConnection)
 
-				friend.host.connectedPeer.should.eql(host.peer)
+				connectedPeer(friend).should.eql(host.peer)
 				done()
 			})
 		})
@@ -36,7 +46,7 @@ describe('Messaging', () => {
 			friend.once('ready', () => {
 				host.once('data', ({from, data}) => {
 					from.should.be.instanceof(MockDataConnection)
-					friend.host.connectedPeer.should.eql(from.host)
+					connectedPeer(friend).should.eql(from.host)
 
 					message.should.eql(data)
 					done()
