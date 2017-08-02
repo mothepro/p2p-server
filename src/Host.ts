@@ -1,35 +1,14 @@
-const Peer = require('peerjs')
+import Peer = require('peerjs')
 import {pack, unpack} from './Packer'
 import Client, {VersionError, DirectMessage, BroadcastMessage} from './Client'
 
-type peerID = string
-type dcID = string
-
-/**
- * @fires ready
- * @fires offline
- * @fires online
- * @fires quit
- * @fires clientConnection
- * @fires disconnection
- * @fires data
- */
+/** @fires ready offline online quit clientConnection disconnection data */
 export default class Host extends Client {
 	// Hashmap of all active connections.
-	public clients: Map<dcID, PeerJs.DataConnection> = new Map
+	public clients: Map<PeerJs.dcID, PeerJs.DataConnection> = new Map
 
-	public peer: PeerJs.Peer
 	private doNotLog: boolean = false
 
-	/**
-	 * Creates the Peer.
-	 *
-	 * @param version version of top package, to make sure host and client are in sync.
-	 * @param hostID ID to use as the hosting peer.
-	 * @param options for the Peer constructor.
-	 * @event ready
-	 * @event online
-	 */
 	makePeer({
 		version,
 		options,
@@ -43,10 +22,23 @@ export default class Host extends Client {
 		this.emit('online')
 	}
 
+    /**
+     * Do not remove all connections if a client with a bad version connects.
+     * @event error
+     */
+    protected errorHandler(e: Error) {
+        // Handle errors with the clientConnection to the host.
+        if (e instanceof VersionError) {
+            this.log(e.message)
+			this.emit('error', e)
+        } else
+        	super.errorHandler(e)
+    }
+
 	/**
 	 * Generate a short random id, length is always 7.
 	 */
-	static randomID(): peerID {
+	static randomID(): PeerJs.peerID {
 		let num = (new Date).getTime()
 		num += Math.random()
 		num *= 100
@@ -157,7 +149,6 @@ export default class Host extends Client {
 
 	/**
 	 * Alias for broadcast.
-	 * @override
 	 */
 	send(data, to) {
 		this.log('should not use method "send" as host.')
@@ -169,11 +160,12 @@ export default class Host extends Client {
 	 *
 	 * TODO combine this method with send method.
 	 * TODO if sending to yourself, emit the receive
-	 * @param {DataConnection|string} client
-	 * @param {*} data
-	 * @param {DataConnection|string=} from the client which actually sent the message
 	 */
-	sendTo(client: PeerJs.DataConnection | dcID, data, from?: PeerJs.DataConnection | dcID): boolean {
+	sendTo(
+		client: PeerJs.DataConnection | PeerJs.dcID,
+		data: any,
+		from?: PeerJs.DataConnection | PeerJs.dcID, // the client which actually sent the message
+	): boolean {
 		let message = data
 
 		if(typeof from === 'string')

@@ -1,5 +1,5 @@
 ///<reference path="../test/stubs/PeerJs.d.ts" />
-const Peer = require('peerjs')
+import Peer = require('peerjs')
 import * as EventEmitter from 'events'
 import {pack, unpack, register, registerError} from './Packer'
 
@@ -32,17 +32,7 @@ registerError(0x1E, VersionError)
 register(0x08, DirectMessage, DirectMessage.pack, DirectMessage.unpack)
 register(0x09, BroadcastMessage, BroadcastMessage.pack, BroadcastMessage.unpack)
 
-type peerID = string
-type dcID = string
-
-/**
- * @fires error
- * @fires ready
- * @fires quit
- * @fires connection
- * @fires disconnection
- * @fires data
- */
+/** @fires error ready quit connection disconnection data */
 export default class Client extends EventEmitter {
 	public peer: PeerJs.Peer
 	public host: PeerJs.DataConnection
@@ -51,12 +41,6 @@ export default class Client extends EventEmitter {
 
 	/**
 	 * Create a host as a server to other clients.
-	 *
-	 * @param {string} key a Peer JS API key.
-	 * @param {string} version version of top package, to make sure host and client are in sync.
-	 * @param {string} hostID peer id of host to connect to.
-	 * @param {Function=} logger optional method to log info.
-	 * @param {Object=} options
 	 */
 	constructor({
 		key,
@@ -67,15 +51,15 @@ export default class Client extends EventEmitter {
 			secure: false,
 		},
 	}: {
-		key?: string,
-		version?: string,
-		hostID?: peerID,
-		logger?: (...args: any[]) => void,
-		options?: any
-	} = <any>{}) {
+		key?: string, // a Peer JS API key.
+		version?: string, // version of top package, to make sure host and client are in sync.
+		hostID?: PeerJs.peerID, // peer id of host to connect to.
+		logger?: typeof Client.prototype.log, // optional method to log info.
+		options?: PeerJs.PeerJSOption, // Extra PeerJS options
+	} = {}) {
 		super()
 
-		if (typeof logger === 'function') {
+		if (logger) {
 			this.log            = logger
 			options.debug       = 3
 			options.logFunction = this.log.bind(this, 'peerjs')
@@ -93,8 +77,12 @@ export default class Client extends EventEmitter {
 	 * @param options for the Peer constructor.
 	 * @event connection
 	 */
-	protected makePeer({version, hostID, options}: {version: string, hostID: peerID, options: PeerJs.PeerJSOption}): void {
-		this.peer = new Peer(<PeerJs.PeerJSOption>options)
+	protected makePeer({version, hostID, options}: {
+		version: string,
+		hostID: PeerJs.peerID,
+		options: PeerJs.PeerJSOption
+	}): void {
+		this.peer = new Peer(options)
 		this.peer.on('error', this.errorHandler.bind(this))
 		this.peer.on('close', this.quit.bind(this))
 		this.peer.on('open', id => this.ready({id, version, hostID}))
@@ -105,18 +93,15 @@ export default class Client extends EventEmitter {
 	 * @event error disconnection
 	 */
 	protected errorHandler(e: Error | any): void {
-		// Handle errors with the clitentConnection to the host.
+		// Handle errors with the clientConnection to the host.
 		if (e.type === 'peer-unavailable') {
 			this.log('Unable to connect to the host. Make a new instance, or reload')
 			this.quit()
 		} else if (e instanceof VersionError) {
 			this.log(e.message)
-			// Close if I am a client
-			if('clients' in this) {
-				this.host.removeAllListeners()
-				this.emit('disconnection') // because we emitted 'connection'
-				this.quit()
-			}
+			this.host.removeAllListeners()
+			this.emit('disconnection') // because we emitted 'connection'
+			this.quit()
 		}
 
 		this.emit('error', e)
@@ -130,13 +115,17 @@ export default class Client extends EventEmitter {
 	/**
 	 * When an ID is generated.
 	 * Connect to the host. Then disconnect from the server.
-	 *
-	 * @param id generated peer id for client.
-	 * @param version version of top package, to make sure host and client are in sync.
-	 * @param hostID peer id of host to connect to.
 	 * @event ready
 	 */
-	protected ready({id, version, hostID}: {id: peerID, version: string, hostID: peerID}): void {
+	protected ready({
+		id,
+		version,
+		hostID,
+	}: {
+		id: PeerJs.peerID // generated peer id for client
+		version: string // version of top package, to make sure host and client are in sync.
+		hostID: PeerJs.peerID // id of host to connect to.
+	}): void {
 		this.host = this.peer.connect(hostID, {
 			metadata: {
 				version,
@@ -181,9 +170,9 @@ export default class Client extends EventEmitter {
 	 * Send data to the host.
 	 * Sends a Message or DirectMessage
 	 * @param data
-	 * @param {?string} to Connection to send to, leave empty for host
+	 * @param to Connection to send to, leave empty for host
 	 */
-	send(data, to?: dcID): void {
+	send(data: any, to?: PeerJs.dcID): void {
 		let message = data
 
 		if(to)
