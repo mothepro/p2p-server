@@ -19,7 +19,66 @@ type dcID = string
 
 const allPeers: Map<peerID, MockPeer> = new Map
 
-export default class MockPeer extends EventEmitter {
+/**
+ * A Mock of a WebRTC DataChannel
+ */
+class MockDataConnection extends EventEmitter {
+    client: MockDataConnection
+    readonly peer: peerID = this.host.id
+
+    open: boolean = false
+
+    readonly type: string = 'data'
+    readonly buffSize: number = 0
+    readonly id: dcID
+    readonly serialization: string
+    readonly reliable: boolean
+    readonly label: string
+    readonly metadata: Object
+
+    readonly dataChannel: RTCDataChannel
+    readonly peerConnection: any
+    off = this.removeListener
+    removeAllListeners(event?: string) {
+        return this
+    }
+
+    constructor(public host: MockPeer, {
+        label = '',
+        metadata = { version: '0' },
+        serialization = 'none',
+        reliable = false,
+        connectionId = `dc_${MockPeer.randomID()}`,
+    }: any = {}) {
+        super()
+
+        this.id = connectionId
+        this.serialization = serialization
+        this.reliable = reliable
+        this.label = label
+        this.metadata = metadata
+
+        setTimeout(() => this.ready(), 0)
+    }
+
+    ready() {
+        this.open = true
+        this.emit('open')
+    }
+
+    send(data) {
+        this.client.emit('data', data)
+    }
+
+    close() {
+        this.open = false
+        this.emit('close')
+    }
+}
+
+class MockPeer extends EventEmitter {
+    static MockDataConnection = MockDataConnection
+
 	destroyed: boolean = false
 	disconnected: boolean = false
 	connectionMap: Map<peerID, MockDataConnection> = new Map
@@ -99,61 +158,4 @@ export default class MockPeer extends EventEmitter {
 	}
 }
 
-/**
- * A Mock of a WebRTC DataChannel
- */
-export class MockDataConnection extends EventEmitter {
-	client: MockDataConnection
-	readonly peer: peerID = this.host.id
-
-	open: boolean = false
-
-	readonly type: string = 'data'
-	readonly buffSize: number = 0
-	readonly id: dcID
-	readonly serialization: string
-	readonly reliable: boolean
-	readonly label: string
-	readonly metadata: Object
-
-	readonly dataChannel: RTCDataChannel
-	readonly peerConnection: any
-	off = this.removeListener
-	removeAllListeners(event?: string) {
-		return this
-	}
-
-	constructor(public host: MockPeer, {
-		label = '',
-		metadata = { version: '0' },
-		serialization = 'none',
-		reliable = false,
-		connectionId = `dc_${MockPeer.randomID()}`,
-	}: any = {}) {
-		super()
-
-		this.id = connectionId
-		this.serialization = serialization
-		this.reliable = reliable
-		this.label = label
-		this.metadata = metadata
-
-		setTimeout(() => this.ready(), 0)
-	}
-
-	ready() {
-		this.open = true
-		this.emit('open')
-	}
-
-	send(data) {
-		this.client.emit('data', data)
-	}
-
-	close() {
-		this.open = false
-		this.emit('close')
-	}
-}
-
-exports = MockPeer
+export = MockPeer

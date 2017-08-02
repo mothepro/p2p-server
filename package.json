@@ -5,10 +5,11 @@
   "main": "lib/index.js",
   "scripts": {
     "test": "npm run compile:test && mocha lib/test",
-    "compile": "npm run clean && tsc",
-    "compile:test": "npm run clean && tsc -p test",
-    "prepublish": "npm run compile",
-    "clean": "npm uninstall @types/webrtc"
+    "precompile": "npm uninstall @types/webrtc",
+    "precompile:test": "npm run precompile",
+    "compile": "tsc",
+    "compile:test": "tsc -p test",
+    "prepublish": "npm run compile"
   },
   "repository": {
     "type": "git",

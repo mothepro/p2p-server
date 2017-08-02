@@ -1,14 +1,13 @@
 import * as should from 'should'
-import MockPeer, {MockDataConnection} from './stubs/MockPeer'
+import MockPeer = require('./stubs/MockPeer')
 import Client from '../src/Client'
 import Host from '../src/Host'
 
 /**
  * Get the peer on the other side of the client
- * @param peer
  */
 function connectedPeer(peer: Client): MockPeer {
-	const mockPeer = <MockDataConnection>peer.host
+	const mockPeer = <any>peer.host
 	const mockDC = mockPeer.client
     return mockDC.host
 }
@@ -23,7 +22,7 @@ describe('Connecting', () => {
 			friend.once('ready', () => {
 				friend.should.be.instanceof(Client)
 				friend.peer.should.be.instanceof(MockPeer)
-				friend.host.should.be.instanceof(MockDataConnection)
+				friend.host.should.be.instanceof(MockPeer.MockDataConnection)
 
 				connectedPeer(friend).should.eql(host.peer)
 				done()
@@ -45,7 +44,7 @@ describe('Messaging', () => {
 
 			friend.once('ready', () => {
 				host.once('data', ({from, data}) => {
-					from.should.be.instanceof(MockDataConnection)
+					from.should.be.instanceof(MockPeer.MockDataConnection)
 					connectedPeer(friend).should.eql(from.host)
 
 					message.should.eql(data)
