@@ -118,7 +118,7 @@ export default class Host extends Client {
 	 * Parse a message to decide what to do.
 	 * @event data
 	 */
-	protected receive(data: {to: string, data: any}, client?: PeerJs.DataConnection): boolean {
+	protected receive(data: {to: PeerJs.dcID, data: any}, client?: PeerJs.DataConnection): boolean {
 		// Forward a message on behalf of someone
 		if (data instanceof DirectMessage) {
 			this.sendTo(data.to, data.data, client)

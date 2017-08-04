@@ -4,22 +4,25 @@ import * as EventEmitter from 'events'
 import {pack, unpack, register, registerError} from './Packer'
 
 export class VersionError extends Error {}
+registerError(0x1E, VersionError)
 
 export class DirectMessage {
-	constructor(public to: string, public data: any) {}
+	constructor(public to: PeerJs.dcID, public data: any) {}
 
-	static pack(dm): [string, any] {
+	static pack(dm: DirectMessage): [PeerJs.dcID, any] {
 		return [dm.to, dm.data]
 	}
 
-	static unpack(data): DirectMessage {
+	static unpack(data: [PeerJs.dcID, any]): DirectMessage {
 		return new DirectMessage(data[0], data[1])
 	}
 }
+register(0x08, DirectMessage, DirectMessage.pack, DirectMessage.unpack)
+
 export class BroadcastMessage {
 	constructor(public readonly data: any) {}
 
-	static pack(message: any): any {
+	static pack(message: BroadcastMessage): any {
 		return message.data
 	}
 
@@ -27,9 +30,6 @@ export class BroadcastMessage {
 		return new BroadcastMessage(data)
 	}
 }
-
-registerError(0x1E, VersionError)
-register(0x08, DirectMessage, DirectMessage.pack, DirectMessage.unpack)
 register(0x09, BroadcastMessage, BroadcastMessage.pack, BroadcastMessage.unpack)
 
 /** @fires error ready quit connection disconnection data */
