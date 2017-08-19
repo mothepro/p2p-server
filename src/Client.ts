@@ -1,5 +1,5 @@
 ///<reference path="../test/stubs/PeerJs.d.ts" />
-import Peer = require('peerjs')
+const Peer = require('peerjs')
 import * as EventEmitter from 'events'
 import {pack, unpack, register, registerError} from './Packer'
 

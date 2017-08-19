@@ -6,9 +6,7 @@
   "scripts": {
     "test": "npm run compile:test && mocha lib/test",
     "precompile": "npm uninstall @types/webrtc",
-    "precompile:test": "npm run precompile",
     "compile": "tsc",
-    "compile:test": "tsc -p test",
     "prepublish": "npm run compile"
   },
   "repository": {

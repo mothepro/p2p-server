@@ -1,4 +1,4 @@
-import Peer = require('peerjs')
+const Peer = require('peerjs')
 import {pack, unpack} from './Packer'
 import Client, {VersionError, DirectMessage, BroadcastMessage} from './Client'
 
