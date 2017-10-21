@@ -7,7 +7,7 @@ if(process.env.NODE_ENV === 'test') {
     Peer = require('peerjs')
 }
 
-/** @fires ready offline online quit clientConnection disconnection data */
+/** @fires ready offline online quit clientConnection clientDisconnection clientUpdate data */
 export default class Host extends Client {
 	// Hashmap of all active connections.
 	public clients: Map<PeerJs.dcID, PeerJs.DataConnection> = new Map
@@ -53,7 +53,7 @@ export default class Host extends Client {
 
 	/**
 	 * Someone attempts to connect to us.
-	 * @event clientConnection
+	 * @event clientConnection clientUpdate
 	 */
 	protected clientConnection(client: PeerJs.DataConnection, version?: string) {
 		if(client.metadata.version !== version) {
@@ -70,6 +70,7 @@ export default class Host extends Client {
 			client.on('open', () => {
 				this.clients.set(client.id, client)
 				this.emit('clientConnection', client)
+				this.emit('clientUpdate')
 			})
 			client.on('data', data => this.receive(unpack(data), client))
 			client.on('close', this.disconnect.bind(this, client))
@@ -98,14 +99,15 @@ export default class Host extends Client {
 	/**
 	 * A client has left the game.
 	 * @returns whether the client was actually removed.
-	 * @event disconnection
+	 * @event clientDisconnection clientUpdate
 	 */
 	protected disconnect(client?: PeerJs.DataConnection): boolean {
 		this.log('closing with', client.id)
 
 		if(this.clients.has(client.id)) {
 			this.clients.delete(client.id)
-			this.emit('disconnection', client)
+			this.emit('clientDisconnection', client)
+            this.emit('clientUpdate')
 			client.close()
 			return true
 		}
