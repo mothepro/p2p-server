@@ -4,7 +4,7 @@
   "description": "A server-client library built using peerjs. (No server needed)",
   "main": "lib/index.js",
   "scripts": {
-    "test": "npm run compile:test && mocha lib/test",
+    "test": "cross-env NODE_ENV=test npm run compile:test && mocha lib/test",
     "precompile": "npm uninstall @types/webrtc",
     "compile": "tsc",
     "build:dev": "cross-env NODE_ENV=development browserify lib/index.js -o dist/p2p-server.js",

@@ -1,7 +1,12 @@
 ///<reference path="../test/stubs/PeerJs.d.ts" />
-const Peer = require('peerjs')
 import * as EventEmitter from 'events'
 import {pack, unpack, register, registerError} from './Packer'
+let Peer
+if(process.env.NODE_ENV === 'test') {
+    Peer = require('../test/stubs/MockPeer')
+} else {
+    Peer = require('peerjs')
+}
 
 export class VersionError extends Error {}
 registerError(0x1E, VersionError)

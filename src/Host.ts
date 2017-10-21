@@ -1,6 +1,11 @@
-const Peer = require('peerjs')
 import {pack, unpack} from './Packer'
 import Client, {VersionError, DirectMessage, BroadcastMessage} from './Client'
+let Peer
+if(process.env.NODE_ENV === 'test') {
+    Peer = require('../test/stubs/MockPeer')
+} else {
+    Peer = require('peerjs')
+}
 
 /** @fires ready offline online quit clientConnection disconnection data */
 export default class Host extends Client {
