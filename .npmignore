@@ -1,6 +1,0 @@
-# Don't send ES6 files ones
-src/
-test/
-index.js
-.idea/
-*.ts

@@ -30,8 +30,12 @@
     "should": "^11.2.0",
     "typescript": "^2.4.1"
   },
+  "files": [
+    "lib/",
+    "dist/"
+  ],
   "dependencies": {
     "msgpack-lite": "^0.1.26",
-    "peerjs": "^0.3.14"
+    "peerjs": "git+https://github.com/peers/peerjs.git#10529b6"
   }
 }
