@@ -7,7 +7,7 @@
     "test": "cross-env NODE_ENV=test npm run compile:test && mocha lib/test",
     "precompile": "npm uninstall @types/webrtc",
     "compile": "tsc",
-    "build:dev": "cross-env NODE_ENV=development browserify lib/index.js -o dist/p2p-server.js",
+    "build:dev": "cross-env NODE_ENV=development browserify -t envify lib/index.js -o dist/p2p-server.js",
     "build:prod": "cross-env NODE_ENV=production browserify -t envify -t uglifyify lib/index.js -o dist/p2p-server.min.js",
     "postbuild:prod": "uglifyjs dist/p2p-server.min.js -o dist/p2p-server.min.js --compress --mangle",
     "prebuild": "npm run compile",
