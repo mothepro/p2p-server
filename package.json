@@ -7,7 +7,12 @@
     "test": "npm run compile:test && mocha lib/test",
     "precompile": "npm uninstall @types/webrtc",
     "compile": "tsc",
-    "prepublish": "npm run compile"
+    "build:dev": "cross-env NODE_ENV=development browserify lib/index.js -o dist/p2p-server.js",
+    "build:prod": "cross-env NODE_ENV=production browserify -t envify -t uglifyify lib/index.js -o dist/p2p-server.min.js",
+    "postbuild:prod": "uglifyjs dist/p2p-server.min.js -o dist/p2p-server.min.js --compress --mangle",
+    "prebuild": "npm run compile",
+    "build": "npm run build:dev && npm run build:prod",
+    "prepublish": "npm run build"
   },
   "repository": {
     "type": "git",
@@ -25,10 +30,15 @@
     "@types/node": "^8.0.13",
     "@types/peerjs": "0.0.28",
     "@types/should": "^8.3.0",
+    "browserify": "^14.5.0",
+    "cross-env": "^5.1.0",
+    "envify": "^4.1.0",
     "eventemitter3": "^2.0.3",
     "mocha": "^3.2.0",
     "should": "^11.2.0",
-    "typescript": "^2.4.1"
+    "typescript": "^2.4.1",
+    "uglify-js": "^3.1.5",
+    "uglifyify": "^4.0.4"
   },
   "files": [
     "lib/",
