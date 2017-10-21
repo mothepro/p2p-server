@@ -187,11 +187,12 @@ export default class Client extends EventEmitter {
 	 * Then, receive it for myself.
 	 * Sends a BroadcastMessage
 	 */
-	broadcast(data: any): void {
+	broadcast(data: any, alsoReceive = true): void {
 		this.host.send(pack(new BroadcastMessage(data)))
 		// TODO Where should the data be "from" if I broadcasted it???
-		this.receive(data)
-		this.log('broadcasting', data)
+		if(alsoReceive)
+			this.receive(data)
+		this.log(alsoReceive ? 'broadcasting' : 'forwarding', data)
 	}
 
 	/**

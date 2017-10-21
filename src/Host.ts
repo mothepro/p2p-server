@@ -197,7 +197,7 @@ export default class Host extends Client {
 	/**
 	 * Send to all connections.
 	 */
-	broadcast(data: any): void {
+	broadcast(data: any, alsoReceive = true): void {
 		if(this.clients.size === 0)
 			return
 
@@ -206,7 +206,8 @@ export default class Host extends Client {
 			this.sendTo(client, data)
 		}
 
-		this.receive(data)
-		this.log('Broadcasting', data)
+		if(alsoReceive)
+			this.receive(data)
+        this.log(alsoReceive ? 'broadcasting' : 'forwarding', data)
 	}
 }

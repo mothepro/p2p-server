@@ -216,8 +216,56 @@ describe('Broadcasting', () => {
 					const friend2 = new Client({hostID, version})
 				})
 
-				const friend = new Client({hostID, version})
-			})
-		})
-	})
+                const friend = new Client({hostID, version})
+            })
+        })
+    })
+
+    it('should only forward a message to other clients', function () {
+        const version = '6'
+        const message = {
+            name: 'mo',
+            age: 12.6,
+            map: new Map([[1, 5], [2, 6]])
+        }
+
+        const host = new Host({version})
+
+        return new Promise((resolve, reject) => {
+            host.once('ready', hostID => {
+                host.once('clientConnection', hostConnectionToFriend => {
+                    host.clients.size.should.equal(1)
+
+                    host.once('clientConnection', hostConnectionToFriendTwo => {
+                        host.clients.size.should.equal(2)
+
+                        let times = 0
+
+                        friend.once('data', (msg) => {
+                            msg.from.should.equal(hostConnectionToFriendTwo.id)
+                            message.should.eql(msg.data)
+
+                            if(++times === 2)
+                                resolve()
+                        })
+                        friend2.once('data', (msg) =>
+							reject('Forwarding should not emit an event to oneself.'))
+                        host.once('data', (msg) => {
+                            msg.from.should.equal(hostConnectionToFriendTwo)
+                            message.should.eql(msg.data)
+
+                            if(++times === 2)
+                                resolve()
+                        })
+
+                        friend2.broadcast(message, false)
+                    })
+
+                    const friend2 = new Client({hostID, version})
+                })
+
+                const friend = new Client({hostID, version})
+            })
+        })
+    })
 })
