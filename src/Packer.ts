@@ -13,6 +13,7 @@ const errorMap = new Map([
 
 // Override codecs for Maps and Errors
 register(0x1C, Map, map => [...map], entries => new Map(entries))
+register(0x07, Set, set => [...set], entries => new Set(entries))
 for(const [code, errType] of errorMap)
 	registerError(code, errType)
 

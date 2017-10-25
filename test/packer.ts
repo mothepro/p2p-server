@@ -18,10 +18,16 @@ describe('Packer', () => {
 					"foo": 1,
 					"baz": 0.5
 				},
-				"map": new Map([
-					['hello', 'world'],
-					['1', '12345']
-				])
+                "map": new Map([
+                    ['hello', 'world'],
+                    ['1', '12345']
+                ]),
+                "set": new Set([
+                    'hello',
+					'world',
+                    '1',
+					'12345'
+                ])
 			}
 		}
 
