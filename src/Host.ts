@@ -62,7 +62,7 @@ export default class Host extends Client {
 				e.clientVersion = client.metadata.version
 				e.hostVersion = version
 
-				this.sendTo(client, e)
+				this.send(e, client)
 				this.errorHandler(e)
 			})
 		} else {
@@ -128,7 +128,7 @@ export default class Host extends Client {
 	protected receive(data: {to: PeerJs.dcID, data: any}, client?: PeerJs.DataConnection): boolean {
 		// Forward a message on behalf of someone
 		if (data instanceof DirectMessage) {
-			this.sendTo(data.to, data.data, client)
+			this.send(data.data, data.to, client)
 			return false
 		}
 
@@ -137,7 +137,7 @@ export default class Host extends Client {
 			// Send to all players except for one.
 			for(const [id, connection] of this.clients) {
 				if (id === client.id) continue
-				this.sendTo(connection, data.data, client)
+				this.send(data.data, connection, client)
 			}
 			this.emit('data', {
 				from: client,
@@ -155,22 +155,13 @@ export default class Host extends Client {
 	}
 
 	/**
-	 * Alias for broadcast.
-	 */
-	send(data, to) {
-		this.log('should not use method "send" as host.')
-		this.broadcast(data)
-	}
-
-	/**
 	 * Send data to someone.
 	 *
-	 * TODO combine this method with send method.
 	 * TODO if sending to yourself, emit the receive
 	 */
-	sendTo(
-		client: PeerJs.DataConnection | PeerJs.dcID,
+	send(
 		data: any,
+		to: PeerJs.DataConnection | PeerJs.dcID,
 		from?: PeerJs.DataConnection | PeerJs.dcID, // the client which actually sent the message
 	): boolean {
 		let message = data
@@ -178,8 +169,8 @@ export default class Host extends Client {
 		if(typeof from === 'string')
 			from = this.clients.get(from)
 
-		if(typeof client === 'string')
-			client = this.clients.get(client)
+		if(typeof to === 'string')
+			to = this.clients.get(to)
 
 		if(data instanceof Error)
 			this.doNotLog = true
@@ -187,13 +178,13 @@ export default class Host extends Client {
 		if(from)
 			message = new DirectMessage(from.id, data)
 
-		if(typeof client.send === 'function') {
+		if(typeof to.send === 'function') {
 			if(this.doNotLog === undefined)
-				this.log('Sending to', client.id, data)
+				this.log('Sending to', to.id, data)
 			else
 				delete this.doNotLog
 
-			client.send(pack(message))
+			to.send(pack(message))
 			return true
 		} else
 			this.errorHandler(Error('client is not an instance of DataConnection.'))
@@ -210,7 +201,7 @@ export default class Host extends Client {
 
 		for(const client of this.clients.values()) {
 			this.doNotLog = true
-			this.sendTo(client, data)
+			this.send(data, client)
 		}
 
 		if(alsoReceive)

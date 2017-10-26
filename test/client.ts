@@ -76,7 +76,7 @@ describe('Messaging', () => {
 					done()
 				})
 
-				host.sendTo(hostConnectionToFriend, message)
+				host.send(message, hostConnectionToFriend)
 			})
 
 			const friend = new Client({hostID, version})
