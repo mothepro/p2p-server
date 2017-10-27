@@ -1,6 +1,18 @@
 import {encode, decode, createCodec} from 'msgpack-lite'
 
-const codec = createCodec({preset: true})
+// Codec accept a function or, an array of fuctions to extension {,un}packers.
+type Buff = any // Buffer | Uint8Array | number[] | object
+interface Codec {
+    addExtPacker<T>(
+        etype: number,
+        Class: new(...args: any[]) => T,
+        packer: ((t: T) => Buff) | ((t: T) => Buff)[]): void;
+    addExtUnpacker<T>(
+    	etype: number,
+		unpacker: ((data: Buff) => T) | ((data: Buff) => T)[]): void;
+}
+
+const codec: Codec = createCodec({preset: true})
 const errorMap = new Map([
 	[0x0E, Error],
 	[0x01, EvalError],
@@ -42,12 +54,12 @@ export const unpack = (data: any) => decode(data, {codec})
  */
 export function register<encInst, buff>(
 	code: number,
-	cls: {new(...args: any[]): encInst},
-	packer: (encInst) => buff,
-	unpacker: (buff) => encInst,
+	cls: new(...args: any[]) => encInst,
+	packer: (encinst: encInst) => Buff,
+	unpacker: (buff: Buff) => encInst,
 ) {
-	codec.addExtPacker(code, cls, [packer, x => encode(x, {codec})])
-	codec.addExtUnpacker(code, [x => decode(x, {codec}), unpacker])
+	codec.addExtPacker(code, cls, [packer, (x: any) => encode(x, {codec})])
+	codec.addExtUnpacker(code, [(x: any) => decode(x, {codec}), unpacker])
 }
 
 /**
@@ -64,7 +76,7 @@ export function registerError<T extends Error>(
 		obj.message = err.message
 		return obj
 	}, function (errData) {
-		const error = new cls(errData.message)
+		const error = new cls(errData.message) as any
 
 		for (const key of Object.keys(errData))
 			error[key] = errData[key]

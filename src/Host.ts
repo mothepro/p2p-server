@@ -1,6 +1,7 @@
 import {pack, unpack} from './Packer'
 import Client, {VersionError, DirectMessage, BroadcastMessage} from './Client'
-let Peer
+
+let Peer: { new (id: string, options?: PeerJs.PeerJSOption): PeerJs.Peer }
 if(process.env.NODE_ENV === 'test') {
     Peer = require('../test/stubs/MockPeer')
 } else {
@@ -14,11 +15,11 @@ export default class Host extends Client {
 
 	private doNotLog: boolean = false
 
-	makePeer({
-		version,
-		options,
-		hostID = Host.randomID(),
-	}) {
+	makePeer({version, options, hostID = Host.randomID()}: {
+        version: string,
+        options: PeerJs.PeerJSOption
+        hostID: PeerJs.peerID,
+    }) {
 		this.peer = new Peer(hostID, options)
 		this.peer.on('open', id => this.emit('ready', id))
 		this.peer.on('connection', c => this.clientConnection(c, version))
@@ -73,7 +74,7 @@ export default class Host extends Client {
 				this.emit('clientUpdate')
 			})
 			client.on('data', data => this.receive(unpack(data), client))
-			client.on('close', this.disconnect.bind(this, client))
+			client.on('close', this.clientDisconnection.bind(this, client))
 			client.on('error', this.errorHandler.bind(this))
 		}
 	}
@@ -97,11 +98,12 @@ export default class Host extends Client {
 	}
 
 	/**
+	 *
 	 * A client has left the game.
 	 * @returns whether the client was actually removed.
 	 * @event clientDisconnection clientUpdate
 	 */
-	protected disconnect(client?: PeerJs.DataConnection): boolean {
+	protected clientDisconnection(client: PeerJs.DataConnection): boolean {
 		this.log('closing with', client.id)
 
 		if(this.clients.has(client.id)) {
@@ -136,14 +138,14 @@ export default class Host extends Client {
 		if (data instanceof BroadcastMessage) {
 			// Send to all players except for one.
 			for(const [id, connection] of this.clients) {
-				if (id === client.id) continue
+				if (client && id === client.id) continue
 				this.send(data.data, connection, client)
 			}
 			this.emit('data', {
 				from: client,
 				data: data.data,
 			})
-			return
+			return false
 		}
 
 		// receive a regular message
@@ -156,33 +158,32 @@ export default class Host extends Client {
 
 	/**
 	 * Send data to someone.
-	 *
-	 * TODO if sending to yourself, emit the receive
 	 */
 	send(
 		data: any,
-		to: PeerJs.DataConnection | PeerJs.dcID,
+		to: PeerJs.DataConnection | PeerJs.dcID | void,
 		from?: PeerJs.DataConnection | PeerJs.dcID, // the client which actually sent the message
 	): boolean {
+		if(data instanceof Error)
+			this.doNotLog = true
+
 		let message = data
 
-		if(typeof from === 'string')
-			from = this.clients.get(from)
 
 		if(typeof to === 'string')
 			to = this.clients.get(to)
 
-		if(data instanceof Error)
-			this.doNotLog = true
+		if(to && typeof to.send === 'function') {
+			// Send on behalf of
+            if(typeof from === 'string')
+                from = this.clients.get(from)
+			if(from)
+				message = new DirectMessage(from.id, data)
 
-		if(from)
-			message = new DirectMessage(from.id, data)
-
-		if(typeof to.send === 'function') {
-			if(this.doNotLog === undefined)
-				this.log('Sending to', to.id, data)
-			else
+			if(this.doNotLog)
 				delete this.doNotLog
+			else
+				this.log('Sending', data, 'to', to.id, 'on behalf of', from ? from.id : 'no one')
 
 			to.send(pack(message))
 			return true

@@ -1,7 +1,9 @@
 ///<reference path="../test/stubs/PeerJs.d.ts" />
 import * as EventEmitter from 'events'
 import {pack, unpack, register, registerError} from './Packer'
-let Peer
+
+// TODO: Use var Peer in peerjs/index.d.ts
+let Peer: { new (options: PeerJs.PeerJSOption): PeerJs.Peer }
 if(process.env.NODE_ENV === 'test') {
     Peer = require('../test/stubs/MockPeer')
 } else {
@@ -9,8 +11,6 @@ if(process.env.NODE_ENV === 'test') {
 }
 
 export class VersionError extends Error {}
-registerError(0x1E, VersionError)
-
 export class DirectMessage {
 	constructor(public to: PeerJs.dcID, public data: any) {}
 
@@ -22,8 +22,6 @@ export class DirectMessage {
 		return new DirectMessage(data[0], data[1])
 	}
 }
-register(0x08, DirectMessage, DirectMessage.pack, DirectMessage.unpack)
-
 export class BroadcastMessage {
 	constructor(public readonly data: any) {}
 
@@ -35,6 +33,9 @@ export class BroadcastMessage {
 		return new BroadcastMessage(data)
 	}
 }
+
+registerError(0x1E, VersionError)
+register(0x08, DirectMessage, DirectMessage.pack, DirectMessage.unpack)
 register(0x09, BroadcastMessage, BroadcastMessage.pack, BroadcastMessage.unpack)
 
 /** @fires error ready quit connection disconnection data */

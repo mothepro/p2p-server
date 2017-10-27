@@ -1,6 +1,7 @@
 import * as EventEmitter from 'events'
 
-global['window'] = {
+declare let global: { window: {} }
+global['window'] = <any>{
 	RTCIceCandidate: {},
 	RTCSessionDescription: {},
 	RTCPeerConnection: {},
@@ -58,7 +59,7 @@ class MockDataConnection extends EventEmitter {
         this.emit('open')
     }
 
-    send(data) {
+    send(data: any) {
         this.client.emit('data', data)
     }
 
@@ -78,7 +79,7 @@ class MockPeer extends EventEmitter {
 
 	// Un documented PeerJS features.
     call(id: string, stream: any, options?: any): PeerJs.MediaConnection {
-    	return <PeerJs.MediaConnection>null
+    	return <PeerJs.MediaConnection>{}
 	}
     getConnection(peer: PeerJs.Peer, id: string): any {}
     listAllPeers(callback: (peerIds: Array<string>)=>void): void {}
@@ -98,6 +99,8 @@ class MockPeer extends EventEmitter {
 
 	connect(id: peerID, options?: PeerJs.PeerConnectOption): MockDataConnection {
 		const otherPeer =  allPeers.get(id)
+		if(!otherPeer)
+			throw Error(`Unable to connect to to ${id}.`)
 
 		const myData = new MockDataConnection(this, options)
 		const theirData = new MockDataConnection(otherPeer, options)
@@ -135,7 +138,7 @@ class MockPeer extends EventEmitter {
 	}
 
 	get connections(): { [id in peerID]: MockDataConnection } {
-		const connections = {}
+		const connections: {[id: string]: MockDataConnection} = {}
 		for(const [id, connection] of this.connectionMap)
 			connections[id] = connection
 		return connections
