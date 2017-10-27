@@ -4,14 +4,15 @@
   "description": "A server-client library built using peerjs. (No server needed)",
   "main": "lib/index.js",
   "scripts": {
+    "pretest": "npm run compile",
     "test": "cross-env NODE_ENV=test npm run compile:test && mocha lib/test",
     "precompile": "npm uninstall @types/webrtc",
+    "prebuild": "npm run precompile",
     "compile": "tsc",
     "build:dev": "webpack",
     "build:prod": "webpack -p",
-    "prebuild": "npm run compile",
     "build": "npm run build:dev && npm run build:prod",
-    "prepublish": "npm run build"
+    "prepublish": "npm run compile && npm run build"
   },
   "repository": {
     "type": "git",
@@ -32,6 +33,7 @@
     "cross-env": "^5.1.0",
     "mocha": "^3.2.0",
     "should": "^11.2.0",
+    "ts-loader": "^3.1.0",
     "typescript": "^2.4.1",
     "webpack": "^3.0.0"
   },
