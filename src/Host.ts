@@ -153,25 +153,31 @@ export default class Host extends Client {
 	/**
 	 * Send data to someone.
 	 */
+	send(data: any, to?: Peer.DataConnection | Peer.dcID): boolean
+	send(data: any, to: Peer.DataConnection | Peer.dcID, from?: Peer.DataConnection | Peer.dcID): boolean
 	send(
 		data: any,
-		to: Peer.DataConnection | Peer.dcID | void,
+		to: Peer.DataConnection | Peer.dcID,
 		from?: Peer.DataConnection | Peer.dcID, // the client which actually sent the message
 	): boolean {
+		function isDataConnection(something: any): something is Peer.DataConnection {
+            return something && typeof (<Peer.DataConnection>something).send === 'function'
+        }
+
 		if(data instanceof Error)
 			this.doNotLog = true
 
-		let message = data
-
-
 		if(typeof to === 'string')
-			to = this.clients.get(to)
+			to = <Peer.DataConnection>this.clients.get(to)
 
-		if(to && typeof to.send === 'function') {
+		if(isDataConnection(to)) {
+			let message = data
+
 			// Send on behalf of
             if(typeof from === 'string')
                 from = this.clients.get(from)
-			if(from)
+
+			if(isDataConnection(from))
 				message = new DirectMessage(from.id, data)
 
 			if(this.doNotLog)
