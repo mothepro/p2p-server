@@ -4,7 +4,7 @@ import * as mock from 'mock-require'
 import MockPeer = require('./stubs/MockPeer')
 mock('peerjs', MockPeer)
 import Client from '../src/Client'
-import Host from '../src/Host'
+import Server from '../src/Server'
 
 /**
  * Get the peer on the other side of the client
@@ -17,7 +17,7 @@ function connectedPeer(peer: Client): MockPeer {
 
 describe('Connecting', () => {
 	it('should connect', function (done) {
-		const host = new Host
+		const host = new Server
 
 		host.once('ready', hostID => {
 			const friend = new Client({hostID})
@@ -40,7 +40,7 @@ describe('Messaging', () => {
 		const message = {
 			hello: 'world'
 		}
-		const host = new Host({version})
+		const host = new Server({version})
 
 		host.once('ready', hostID => {
 			const friend = new Client({hostID, version})
@@ -67,7 +67,7 @@ describe('Messaging', () => {
 			map: new Map([[1, 5], [2, 6]])
 		}
 
-		const host = new Host({version})
+		const host = new Server({version})
 
 		host.once('ready', hostID => {
 			host.once('clientConnection', hostConnectionToFriend => {
@@ -94,7 +94,7 @@ describe('Messaging', () => {
 			map: new Map([[1, 5], [2, 6]])
 		}
 
-		const host = new Host({version})
+		const host = new Server({version})
 
 		host.once('ready', hostID => {
 			host.once('clientConnection', hostConnectionToFriend => {
@@ -125,7 +125,7 @@ describe('Broadcasting', () => {
 			map: new Map([[1, 5], [2, 6]])
 		}
 
-		const host = new Host({version})
+		const host = new Server({version})
 
 		return new Promise((resolve, reject) => {
 			host.once('ready', hostID => {
@@ -178,7 +178,7 @@ describe('Broadcasting', () => {
 			map: new Map([[1, 5], [2, 6]])
 		}
 
-		const host = new Host({version})
+		const host = new Server({version})
 
 		return new Promise((resolve, reject) => {
 			host.once('ready', hostID => {
@@ -232,7 +232,7 @@ describe('Broadcasting', () => {
             map: new Map([[1, 5], [2, 6]])
         }
 
-        const host = new Host({version})
+        const host = new Server({version})
 
         return new Promise((resolve, reject) => {
             host.once('ready', hostID => {
