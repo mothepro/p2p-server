@@ -11,7 +11,8 @@
     "build:prod": "webpack --devtool source-map --entry ./lib/index.js --output-path ./dist/ --output-filename p2p-server.min.js -p",
     "prebuild": "npm run compile",
     "build": "npm run build:dev && npm run build:prod",
-    "prepublish": "npm run compile && npm run build"
+    "prepublish": "publish-please guard",
+    "publish-please": "publish-please"
   },
   "repository": {
     "type": "git",
