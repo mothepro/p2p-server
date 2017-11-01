@@ -1,24 +1,18 @@
 import {pack, unpack} from './Packer'
 import Client, {VersionError, DirectMessage, BroadcastMessage} from './Client'
-
-let Peer: { new (id: string, options?: PeerJs.PeerJSOption): PeerJs.Peer }
-if(process.env.NODE_ENV === 'test') {
-    Peer = require('../test/stubs/MockPeer')
-} else {
-    Peer = require('peerjs')
-}
+import * as Peer from 'peerjs'
 
 /** @fires ready offline online quit clientConnection clientDisconnection clientUpdate data */
 export default class Host extends Client {
 	// Hashmap of all active connections.
-	public clients: Map<PeerJs.dcID, PeerJs.DataConnection> = new Map
+	public clients: Map<Peer.dcID, Peer.DataConnection> = new Map
 
 	private doNotLog: boolean = false
 
 	makePeer({version, options, hostID = Host.randomID()}: {
         version: string,
-        options: PeerJs.PeerJSOption
-        hostID: PeerJs.peerID,
+        options: Peer.PeerJSOption
+        hostID: Peer.peerID,
     }) {
 		this.peer = new Peer(hostID, options)
 		this.peer.on('open', id => this.emit('ready', id))
@@ -44,7 +38,7 @@ export default class Host extends Client {
 	/**
 	 * Generate a short random id, length is always 7.
 	 */
-	static randomID(): PeerJs.peerID {
+	static randomID(): Peer.peerID {
 		let num = (new Date).getTime()
 		num += Math.random()
 		num *= 100
@@ -56,7 +50,7 @@ export default class Host extends Client {
 	 * Someone attempts to connect to us.
 	 * @event clientConnection clientUpdate
 	 */
-	protected clientConnection(client: PeerJs.DataConnection, version?: string) {
+	protected clientConnection(client: Peer.DataConnection, version?: string) {
 		if(client.metadata.version !== version) {
 			client.on('open', () => {
 				const e = <any>new VersionError(`Version of client "${client.metadata.version}" doesn't match host "${version}".`)
@@ -103,7 +97,7 @@ export default class Host extends Client {
 	 * @returns whether the client was actually removed.
 	 * @event clientDisconnection clientUpdate
 	 */
-	protected clientDisconnection(client: PeerJs.DataConnection): boolean {
+	protected clientDisconnection(client: Peer.DataConnection): boolean {
 		this.log('closing with', client.id)
 
 		if(this.clients.has(client.id)) {
@@ -127,7 +121,7 @@ export default class Host extends Client {
 	 * Parse a message to decide what to do.
 	 * @event data
 	 */
-	protected receive(data: {to: PeerJs.dcID, data: any}, client?: PeerJs.DataConnection): boolean {
+	protected receive(data: {to: Peer.dcID, data: any}, client?: Peer.DataConnection): boolean {
 		// Forward a message on behalf of someone
 		if (data instanceof DirectMessage) {
 			this.send(data.data, data.to, client)
@@ -161,8 +155,8 @@ export default class Host extends Client {
 	 */
 	send(
 		data: any,
-		to: PeerJs.DataConnection | PeerJs.dcID | void,
-		from?: PeerJs.DataConnection | PeerJs.dcID, // the client which actually sent the message
+		to: Peer.DataConnection | Peer.dcID | void,
+		from?: Peer.DataConnection | Peer.dcID, // the client which actually sent the message
 	): boolean {
 		if(data instanceof Error)
 			this.doNotLog = true

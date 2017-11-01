@@ -1,4 +1,6 @@
 import * as EventEmitter from 'events'
+import Peer = require('peerjs')
+import RTCDataChannel = require('peerjs')
 
 declare let global: { window: {} }
 global['window'] = <any>{
@@ -78,18 +80,18 @@ class MockPeer extends EventEmitter {
 	off = this.removeListener
 
 	// Un documented PeerJS features.
-    call(id: string, stream: any, options?: any): PeerJs.MediaConnection {
-    	return <PeerJs.MediaConnection>{}
+    call(id: string, stream: any, options?: any): Peer.MediaConnection {
+    	return <Peer.MediaConnection>{}
 	}
-    getConnection(peer: PeerJs.Peer, id: string): any {}
+    getConnection(peer: Peer, id: string): any {}
     listAllPeers(callback: (peerIds: Array<string>)=>void): void {}
 
-	constructor(public id: any, options?: PeerJs.PeerJSOption) {
+	constructor(public id: any, options?: Peer.PeerJSOption) {
 		super()
 
 		// only gave options
 		if(typeof id === 'object' || id === undefined) {
-			options = <PeerJs.PeerJSOption>id
+			options = <Peer.PeerJSOption>id
 			id = MockPeer.randomID()
 		}
 
@@ -97,7 +99,7 @@ class MockPeer extends EventEmitter {
 		setTimeout(() => this.emit('open', id), 0)
 	}
 
-	connect(id: peerID, options?: PeerJs.PeerConnectOption): MockDataConnection {
+	connect(id: peerID, options?: Peer.PeerConnectOption): MockDataConnection {
 		const otherPeer =  allPeers.get(id)
 		if(!otherPeer)
 			throw Error(`Unable to connect to to ${id}.`)

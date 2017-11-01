@@ -1,5 +1,8 @@
 import * as should from 'should'
+import * as mock from 'mock-require'
+
 import MockPeer = require('./stubs/MockPeer')
+mock('peerjs', MockPeer)
 import Client from '../src/Client'
 import Host from '../src/Host'
 
