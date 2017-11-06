@@ -9,75 +9,12 @@ global['window'] = <any>{
 	RTCPeerConnection: {},
 }
 
-type peerID = string
-type dcID = string
-
-const allPeers: Map<peerID, MockPeer> = new Map
-
-/**
- * A Mock of a WebRTC DataChannel
- */
-class MockDataConnection extends EventEmitter {
-    client: MockDataConnection
-    readonly peer: peerID = this.host.id
-
-    open: boolean = false
-
-    readonly type: string = 'data'
-    readonly buffSize: number = 0
-    readonly id: dcID
-    readonly serialization: string
-    readonly reliable: boolean
-    readonly label: string
-    readonly metadata: Object
-
-    readonly dataChannel: RTCDataChannel
-    readonly peerConnection: any
-    off = this.removeListener
-    removeAllListeners(event?: string) {
-        return this
-    }
-
-    constructor(public host: MockPeer, {
-        label = '',
-        metadata = { version: '0' },
-        serialization = 'none',
-        reliable = false,
-        connectionId = `dc_${MockPeer.randomID()}`,
-    }: any = {}) {
-        super()
-
-        this.id = connectionId
-        this.serialization = serialization
-        this.reliable = reliable
-        this.label = label
-        this.metadata = metadata
-
-        setTimeout(() => this.ready(), 0)
-    }
-
-    ready() {
-        this.open = true
-        this.emit('open')
-    }
-
-    send(data: any) {
-        this.client.emit('data', data)
-    }
-
-    close() {
-        this.open = false
-        this.emit('close')
-    }
-}
+const allPeers: Map<MockPeer.peerID, MockPeer> = new Map
 
 class MockPeer extends EventEmitter {
-    static MockDataConnection = MockDataConnection
-
 	destroyed: boolean = false
 	disconnected: boolean = false
-	connectionMap: Map<peerID, MockDataConnection> = new Map
-	off = this.removeListener
+	private connectionMap: Map<MockPeer.peerID, MockPeer.MockDataConnection> = new Map
 
 	// Un documented PeerJS features.
     call(id: string, stream: any, options?: any): Peer.MediaConnection {
@@ -99,13 +36,13 @@ class MockPeer extends EventEmitter {
 		setTimeout(() => this.emit('open', id), 0)
 	}
 
-	connect(id: peerID, options?: Peer.PeerConnectOption): MockDataConnection {
+	connect(id: MockPeer.peerID, options?: Peer.PeerConnectOption): MockPeer.MockDataConnection {
 		const otherPeer =  allPeers.get(id)
 		if(!otherPeer)
 			throw Error(`Unable to connect to to ${id}.`)
 
-		const myData = new MockDataConnection(this, options)
-		const theirData = new MockDataConnection(otherPeer, options)
+		const myData = new MockPeer.MockDataConnection(this, options)
+		const theirData = new MockPeer.MockDataConnection(otherPeer, options)
 
 		myData.client = theirData
 		theirData.client = myData
@@ -139,8 +76,8 @@ class MockPeer extends EventEmitter {
 		this.emit('close')
 	}
 
-	get connections(): { [id in peerID]: MockDataConnection } {
-		const connections: {[id: string]: MockDataConnection} = {}
+	get connections(): { [id in MockPeer.peerID]: MockPeer.MockDataConnection } {
+		const connections: {[id: string]: MockPeer.MockDataConnection} = {}
 		for(const [id, connection] of this.connectionMap)
 			connections[id] = connection
 		return connections
@@ -153,6 +90,64 @@ class MockPeer extends EventEmitter {
 		const ret = <string>Math.floor(num).toString(36) // base 36
 		return ret.substr(3, 7) // remove repetition
 	}
+}
+
+module MockPeer {
+    export type peerID = string
+    export type dcID = string
+
+    /**
+     * A Mock of a WebRTC DataChannel
+     */
+    export class MockDataConnection extends EventEmitter {
+        client: MockDataConnection
+        readonly peer: peerID = this.host.id
+
+        open: boolean = false
+
+        readonly type: string = 'data'
+        readonly buffSize: number = 0
+        readonly id: dcID
+        readonly serialization: string
+        readonly reliable: boolean
+        readonly label: string
+        readonly metadata: Object
+
+        readonly dataChannel: RTCDataChannel
+        readonly peerConnection: any
+
+        constructor(public host: MockPeer, {
+            label = '',
+            metadata = {version: '0'},
+            serialization = 'none',
+            reliable = false,
+            connectionId = `dc_${MockPeer.randomID()}`,
+        }: any = {}) {
+            super()
+
+            this.id = connectionId
+            this.serialization = serialization
+            this.reliable = reliable
+            this.label = label
+            this.metadata = metadata
+
+            setTimeout(() => this.ready(), 0)
+        }
+
+        ready() {
+            this.open = true
+            this.emit('open')
+        }
+
+        send(data: any) {
+            this.client.emit('data', data)
+        }
+
+        close() {
+            this.open = false
+            this.emit('close')
+        }
+    }
 }
 
 export = MockPeer

@@ -2,6 +2,7 @@ import * as should from 'should'
 import * as mock from 'mock-require'
 
 import MockPeer = require('./stubs/MockPeer')
+import {MockDataConnection} from './stubs/MockPeer'
 mock('peerjs', MockPeer)
 import Client from '../src/Client'
 import Server from '../src/Server'
@@ -25,7 +26,7 @@ describe('Connecting', () => {
 			friend.once('ready', () => {
 				friend.should.be.instanceof(Client)
 				friend.peer.should.be.instanceof(MockPeer)
-				friend.host.should.be.instanceof(MockPeer.MockDataConnection)
+				friend.host.should.be.instanceof(MockDataConnection)
 
 				connectedPeer(friend).should.eql(host.peer)
 				done()
@@ -47,7 +48,7 @@ describe('Messaging', () => {
 
 			friend.once('ready', () => {
 				host.once('data', ({from, data}) => {
-					from.should.be.instanceof(MockPeer.MockDataConnection)
+					from.should.be.instanceof(MockDataConnection)
 					connectedPeer(friend).should.eql(from.host)
 
 					message.should.eql(data)

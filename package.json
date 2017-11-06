@@ -3,6 +3,7 @@
   "version": "0.3.2",
   "description": "A server-client library built using peerjs. (No server needed)",
   "main": "lib/index.js",
+  "types": "lib/index.d.ts",
   "scripts": {
     "pretest": "npm run compile",
     "test": "mocha lib/test",

@@ -6,9 +6,11 @@
     "outDir": "./lib",
     "downlevelIteration": true,
     "strict": true,
+    "declaration": true,
     "lib": ["es2017", "dom"]
   },
   "exclude": [
-    "node_modules"
+    "node_modules",
+    "./lib"
   ]
 }

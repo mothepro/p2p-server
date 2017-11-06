@@ -1,15 +1,16 @@
 import {encode, decode, createCodec} from 'msgpack-lite'
 
+export type encodedBuffer = any // Buffer | Uint8Array | number[] | object
+
 // Codec accept a function or, an array of fuctions to extension {,un}packers.
-type Buff = any // Buffer | Uint8Array | number[] | object
 interface Codec {
     addExtPacker<T>(
         etype: number,
         Class: new(...args: any[]) => T,
-        packer: ((t: T) => Buff) | ((t: T) => Buff)[]): void;
+        packer: ((t: T) => encodedBuffer) | ((t: T) => encodedBuffer)[]): void;
     addExtUnpacker<T>(
     	etype: number,
-		unpacker: ((data: Buff) => T) | ((data: Buff) => T)[]): void;
+		unpacker: ((data: encodedBuffer) => T) | ((data: encodedBuffer) => T)[]): void;
 }
 
 const codec: Codec = createCodec({preset: true})
@@ -31,17 +32,13 @@ for(const [code, errType] of errorMap)
 
 /**
  * Pack data into a smaller format.
- * @param {*} data
- * @return {Buffer}
  */
-export const pack = (data: any) => encode(data, {codec})
+export const pack = (data: any) => <encodedBuffer>encode(data, {codec})
 
 /**
  * Unpack data into a useable format.
- * @param {Buffer} data
- * @return {*}
  */
-export const unpack = (data: any) => decode(data, {codec})
+export const unpack = (data: encodedBuffer) => decode(data, {codec})
 
 /**
  * Register an Extension type in the message pack codec
@@ -55,8 +52,8 @@ export const unpack = (data: any) => decode(data, {codec})
 export function register<encInst, buff>(
 	code: number,
 	cls: new(...args: any[]) => encInst,
-	packer: (encinst: encInst) => Buff,
-	unpacker: (buff: Buff) => encInst,
+	packer: (encinst: encInst) => encodedBuffer,
+	unpacker: (buff: encodedBuffer) => encInst,
 ) {
 	codec.addExtPacker(code, cls, [packer, (x: any) => encode(x, {codec})])
 	codec.addExtUnpacker(code, [(x: any) => decode(x, {codec}), unpacker])
