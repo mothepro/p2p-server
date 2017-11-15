@@ -1,6 +1,7 @@
-import {pack, unpack} from './Packer'
-import Client, {BroadcastMessage, DirectMessage, VersionError} from './Client'
 import * as Peer from 'peerjs'
+import {pack, unpack} from './Packer'
+import Client from './Client'
+import {BroadcastMessage, DirectMessage, VersionError} from './messages'
 
 /** @fires ready offline online quit clientConnection clientDisconnection clientUpdate data */
 export default class Server extends Client {

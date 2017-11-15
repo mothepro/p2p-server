@@ -1,34 +1,7 @@
 import * as EventEmitter from 'events'
-import {pack, unpack, register, registerError} from './Packer'
 import * as Peer from 'peerjs'
-
-export class VersionError extends Error {}
-export class DirectMessage {
-	constructor(public to: Peer.dcID, public data: any) {}
-
-	static pack(dm: DirectMessage): [Peer.dcID, any] {
-		return [dm.to, dm.data]
-	}
-
-	static unpack(data: [Peer.dcID, any]): DirectMessage {
-		return new DirectMessage(data[0], data[1])
-	}
-}
-export class BroadcastMessage {
-	constructor(public readonly data: any) {}
-
-	static pack(message: BroadcastMessage): any {
-		return message.data
-	}
-
-	static unpack(data: any): BroadcastMessage {
-		return new BroadcastMessage(data)
-	}
-}
-
-registerError(0x1E, VersionError)
-register(0x08, DirectMessage, DirectMessage.pack, DirectMessage.unpack)
-register(0x09, BroadcastMessage, BroadcastMessage.pack, BroadcastMessage.unpack)
+import {pack, unpack} from './Packer'
+import {BroadcastMessage, DirectMessage, VersionError} from './messages'
 
 /** @fires error ready quit connection disconnection data */
 export default class Client extends EventEmitter {
