@@ -1,10 +1,24 @@
-import * as EventEmitter from 'events'
+import EventEmitter from 'typed-event-emitter-2'
 import * as Peer from 'peerjs'
 import {pack, unpack} from './Packer'
 import {BroadcastMessage, DirectMessage, VersionError} from './messages'
 
-/** @fires error ready quit connection disconnection data */
-export default class Client extends EventEmitter {
+export default class Client extends EventEmitter<
+	'connection' | 'disconnection' | // Emitted by Client on {,dis}connection with Server.
+	'online' | 'offline' | // Emitted on {,dis}connection with brokering server.
+	'start' | 'quit' | // Emitted when starting / closing Peer connection.
+	'clientUpdate', // Emitted by Server when a client {,dis}connects.
+	{
+		error: Error, // Emitted on error.
+		data: { // Emitted when data is received.
+			from: Peer.dcID | '' // | Peer.DataConnection, // For now, let's only emit the connection ID
+			data: any,
+		},
+		ready: Peer.peerID, // Emitted when the Server is ready to accept Clients.
+		clientConnection: Peer.DataConnection, // Emitted by Server when a client connects.
+		clientDisconnection: Peer.DataConnection, // Emitted by Server when a client disconnects.
+	}> {
+
 	public peer: Peer
 	public host: Peer.DataConnection
 
@@ -13,21 +27,13 @@ export default class Client extends EventEmitter {
 	/**
 	 * Create a host as a server to other clients.
 	 */
-	constructor({
-		key,
-		version,
-		hostID,
-		logger = null,
-		options = {
-			secure: false,
-		},
-	}: {
-		key?: string, // a Peer JS API key.
-		version?: string, // version of top package, to make sure host and client are in sync.
+	constructor({key, version, hostID, logger = null, options = { secure: false }}: {
+		key: string, // a Peer JS API key.
+		version: string, // version of top package, to make sure host and client are in sync.
 		hostID?: Peer.peerID, // peer id of host to connect to.
 		logger?: typeof Client.prototype.log, // optional method to log info.
 		options?: Peer.PeerJSOption, // Extra PeerJS options
-	} = {}) {
+	}) {
 		super()
 
 		if (logger) {
@@ -46,26 +52,29 @@ export default class Client extends EventEmitter {
 	 * @param version version of top package, to make sure host and client are in sync.
 	 * @param hostID peer id of host to connect to.
 	 * @param options for the Peer constructor.
-	 * @event connection
 	 */
 	protected makePeer({version, hostID, options}: {
 		version: string,
-		hostID: Peer.peerID,
+		hostID?: Peer.peerID,
 		options: Peer.PeerJSOption
 	}): void {
 		this.peer = new Peer(options)
 		this.peer.on('error', this.errorHandler.bind(this))
 		this.peer.on('close', this.quit.bind(this))
-		this.peer.on('open', id => this.ready({id, version, hostID}))
+	  	this.peer.on('disconnected', () => this.emit('offline'))
+
+		if (hostID)
+			this.peer.on('open', id => this.connect({version, hostID}))
+		else
+			this.errorHandler(Error('hostID was not specified on client.'))
 	}
 
 	/**
 	 * Handle errors with the peer.
-	 * @event error disconnection
 	 */
-	protected errorHandler(e: Error | any): void {
-		// Handle errors with the clientConnection to the host.
-		if (e.type === 'peer-unavailable') {
+	protected errorHandler(e: Error): void {
+		// Handle errors with the connection to the host.
+		if ((<any>e).type === 'peer-unavailable') {
 			this.log('Unable to connect to the host. Make a new instance, or reload')
 			this.quit()
 		} else if (e instanceof VersionError) {
@@ -86,40 +95,29 @@ export default class Client extends EventEmitter {
 	/**
 	 * When an ID is generated.
 	 * Connect to the host. Then disconnect from the server.
-	 * @event ready
 	 */
-	protected ready({
-		id,
-		version,
-		hostID,
-	}: {
-		id: Peer.peerID // generated peer id for client
+	protected connect({version, hostID}: {
 		version: string // version of top package, to make sure host and client are in sync.
 		hostID: Peer.peerID // id of host to connect to.
 	}): void {
-		this.host = this.peer.connect(hostID, {
-			metadata: {
-				version,
-			},
-		})
+		this.emit('online')
+		this.host = this.peer.connect(hostID, {metadata: {version}})
 		this.host.on('error', this.errorHandler.bind(this))
 		this.host.on('close', this.disconnect.bind(this))
 		this.host.on('open', this.connection.bind(this))
 		this.host.on('data', data => this.receive(unpack(data)))
-		this.emit('ready')
 	}
 
 	/**
 	 * Connected to host, leave the server
 	 */
 	protected connection(): void {
-		this.peer.disconnect()
 		this.emit('connection')
+		this.peer.disconnect()
 	}
 
 	/**
 	 * Receive some data from the host. (Message or DirectMessage)
-	 * @event data
 	 */
 	protected receive(data: Error | DirectMessage | any): void {
 		if (data instanceof Error)
@@ -168,7 +166,6 @@ export default class Client extends EventEmitter {
 	/**
 	 * Disconnected from the host.
 	 * Can try to reconnect to the server, then to the host again.
-	 * @event disconnection
 	 */
 	protected disconnect(): void {
 		this.emit('disconnection')
@@ -182,7 +179,6 @@ export default class Client extends EventEmitter {
 	/**
 	 * Peer is destroyed and can no longer accept or create any new connections.
 	 * At this time, the peer's connections will all be closed.
-	 * @event quit
 	 */
 	protected quit(): void {
 		if(!this.peer.destroyed && !this.stopping) {

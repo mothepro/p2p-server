@@ -15,6 +15,7 @@ class MockPeer extends EventEmitter {
 	destroyed: boolean = false
 	disconnected: boolean = false
 	private connectionMap: Map<MockPeer.peerID, MockPeer.MockDataConnection> = new Map
+	public id: Peer.peerID
 
 	// Un documented PeerJS features.
     call(id: string, stream: any, options?: any): Peer.MediaConnection {
@@ -23,7 +24,7 @@ class MockPeer extends EventEmitter {
     getConnection(peer: Peer, id: string): any {}
     listAllPeers(callback: (peerIds: Array<string>)=>void): void {}
 
-	constructor(public id: any, options?: Peer.PeerJSOption) {
+	constructor(id: any, options?: Peer.PeerJSOption) {
 		super()
 
 		// only gave options
@@ -32,21 +33,28 @@ class MockPeer extends EventEmitter {
 			id = MockPeer.randomID()
 		}
 
+		this.id = id
 		allPeers.set(this.id, this)
 		setTimeout(() => this.emit('open', id), 0)
 	}
 
 	connect(id: MockPeer.peerID, options?: Peer.PeerConnectOption): MockPeer.MockDataConnection {
-		const otherPeer =  allPeers.get(id)
-		if(!otherPeer)
-			throw Error(`Unable to connect to to ${id}.`)
+        const otherPeer = allPeers.get(id)
+        if (!otherPeer)
+            throw Error(`Unable to connect to to ${id}.`)
 
-		const myData = new MockPeer.MockDataConnection(this, options)
-		const theirData = new MockPeer.MockDataConnection(otherPeer, options)
+        const myData = new MockPeer.MockDataConnection(this, options)
+        const theirData = new MockPeer.MockDataConnection(otherPeer, options)
 
-		myData.client = theirData
-		theirData.client = myData
+        myData.client = theirData
+        theirData.client = myData
 
+        if (this.connectionMap.has(id) || otherPeer.connectionMap.has(this.id)) {
+            const e: any = Error('host ID taken')
+        	e.type = 'unavailable-id'
+			this.emit('error', e)
+			throw e
+    	}
 		this.connectionMap.set(id, theirData)
 		otherPeer.connectionMap.set(this.id, myData)
 

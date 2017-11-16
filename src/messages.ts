@@ -1,7 +1,10 @@
 import * as Peer from 'peerjs'
 import {register, registerError} from './Packer'
 
-export class VersionError extends Error {}
+export class VersionError extends Error {
+  clientVersion: string
+  hostVersion: string
+}
 export class DirectMessage {
   constructor(public to: Peer.dcID, public data: any) {}
 

@@ -1,4 +1,4 @@
-import * as should from 'should'
+import 'should'
 import * as mock from 'mock-require'
 
 import MockPeer = require('./stubs/MockPeer')
@@ -6,6 +6,9 @@ import {MockDataConnection} from './stubs/MockPeer'
 mock('peerjs', MockPeer)
 import Client from '../src/Client'
 import Server from '../src/Server'
+
+const key = 'test-key' // TEST API Key
+const version = 'test-version' // TEST Default Version
 
 /**
  * Get the peer on the other side of the client
@@ -18,12 +21,12 @@ function connectedPeer(peer: Client): MockPeer {
 
 describe('Connecting', () => {
 	it('should connect', function (done) {
-		const host = new Server
+		const host = new Server({key, version})
 
 		host.once('ready', hostID => {
-			const friend = new Client({hostID})
+			const friend = new Client({key, hostID, version})
 
-			friend.once('ready', () => {
+			friend.once('connection', () => {
 				friend.should.be.instanceof(Client)
 				friend.peer.should.be.instanceof(MockPeer)
 				friend.host.should.be.instanceof(MockDataConnection)
@@ -37,38 +40,35 @@ describe('Connecting', () => {
 
 describe('Messaging', () => {
 	it('should send a message to the host', function (done) {
-		const version = '6'
 		const message = {
 			hello: 'world'
 		}
-		const host = new Server({version})
+		const host = new Server({key, version})
+		let friend: Client
 
 		host.once('ready', hostID => {
-			const friend = new Client({hostID, version})
-
-			friend.once('ready', () => {
-				host.once('data', ({from, data}) => {
-					from.should.be.instanceof(MockDataConnection)
-					connectedPeer(friend).should.eql(from.host)
-
-					message.should.eql(data)
-					done()
-				})
-
-				friend.send(message)
-			})
+			friend = new Client({key, hostID, version})
+			friend.once('connection', () => friend.send(message))
 		})
+
+        host.once('data', ({from, data}) => {
+        	const friendDC: MockDataConnection = <any>friend.host
+        	friendDC.client.id.should.eql(from)
+            connectedPeer(friend).should.eql(host.peer)
+
+            message.should.eql(data)
+            done()
+        })
 	})
 
 	it('should send a message to a client', function (done) {
-		const version = '6'
 		const message = {
 			name: 'mo',
 			age: 12.6,
 			map: new Map([[1, 5], [2, 6]])
 		}
 
-		const host = new Server({version})
+		const host = new Server({key, version})
 
 		host.once('ready', hostID => {
 			host.once('clientConnection', hostConnectionToFriend => {
@@ -83,19 +83,18 @@ describe('Messaging', () => {
 				host.send(message, hostConnectionToFriend)
 			})
 
-			const friend = new Client({hostID, version})
+			const friend = new Client({key, hostID, version})
 		})
 	})
 
 	it('should direct message another client', function (done) {
-		const version = '6'
 		const message = {
 			name: 'mo',
 			age: 12.6,
 			map: new Map([[1, 5], [2, 6]])
 		}
 
-		const host = new Server({version})
+		const host = new Server({key, version})
 
 		host.once('ready', hostID => {
 			host.once('clientConnection', hostConnectionToFriend => {
@@ -109,24 +108,23 @@ describe('Messaging', () => {
 					friend.send(message, hostConnectionToFriendTwo.id)
 				})
 
-				const friend2 = new Client({hostID, version})
+				const friend2 = new Client({key, hostID, version})
 			})
 
-			const friend = new Client({hostID, version})
+			const friend = new Client({key, hostID, version})
 		})
 	})
 })
 
 describe('Broadcasting', () => {
 	it('should broadcast a message to clients', function () {
-		const version = '6'
 		const message = {
 			name: 'mo',
 			age: 12.6,
 			map: new Map([[1, 5], [2, 6]])
 		}
 
-		const host = new Server({version})
+		const host = new Server({key, version})
 
 		return new Promise((resolve, reject) => {
 			host.once('ready', hostID => {
@@ -153,7 +151,7 @@ describe('Broadcasting', () => {
 								resolve()
 						})
 						host.once('data', (msg) => {
-							should.not.exist(msg.from)
+                            msg.from.should.equal('')
 							message.should.eql(msg.data)
 
 							if(++times === 3)
@@ -163,23 +161,22 @@ describe('Broadcasting', () => {
 						host.broadcast(message)
 					})
 
-					const friend2 = new Client({hostID, version})
+					const friend2 = new Client({key, hostID, version})
 				})
 
-				const friend = new Client({hostID, version})
+				const friend = new Client({key, hostID, version})
 			})
 		})
 	})
 
 	it('should broadcast a message to other clients', function () {
-		const version = '6'
 		const message = {
 			name: 'mo',
 			age: 12.6,
 			map: new Map([[1, 5], [2, 6]])
 		}
 
-		const host = new Server({version})
+		const host = new Server({key, version})
 
 		return new Promise((resolve, reject) => {
 			host.once('ready', hostID => {
@@ -207,7 +204,7 @@ describe('Broadcasting', () => {
 								resolve()
 						})
 						host.once('data', (msg) => {
-							msg.from.should.equal(hostConnectionToFriendTwo)
+							msg.from.should.equal(hostConnectionToFriendTwo.id)
 							message.should.eql(msg.data)
 
 							if(++times === 3)
@@ -217,23 +214,22 @@ describe('Broadcasting', () => {
 						friend2.broadcast(message)
 					})
 
-					const friend2 = new Client({hostID, version})
+					const friend2 = new Client({key, hostID, version})
 				})
 
-                const friend = new Client({hostID, version})
+                const friend = new Client({key, hostID, version})
             })
         })
     })
 
     it('should only forward a message to other clients', function () {
-        const version = '6'
         const message = {
             name: 'mo',
             age: 12.6,
             map: new Map([[1, 5], [2, 6]])
         }
 
-        const host = new Server({version})
+        const host = new Server({key, version})
 
         return new Promise((resolve, reject) => {
             host.once('ready', hostID => {
@@ -255,7 +251,7 @@ describe('Broadcasting', () => {
                         friend2.once('data', (msg) =>
 							reject('Forwarding should not emit an event to oneself.'))
                         host.once('data', (msg) => {
-                            msg.from.should.equal(hostConnectionToFriendTwo)
+                            msg.from.should.equal(hostConnectionToFriendTwo.id)
                             message.should.eql(msg.data)
 
                             if(++times === 2)
@@ -265,10 +261,10 @@ describe('Broadcasting', () => {
                         friend2.broadcast(message, false)
                     })
 
-                    const friend2 = new Client({hostID, version})
+                    const friend2 = new Client({key, hostID, version})
                 })
 
-                const friend = new Client({hostID, version})
+                const friend = new Client({key, hostID, version})
             })
         })
     })

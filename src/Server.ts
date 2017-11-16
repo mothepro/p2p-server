@@ -3,9 +3,8 @@ import {pack, unpack} from './Packer'
 import Client from './Client'
 import {BroadcastMessage, DirectMessage, VersionError} from './messages'
 
-/** @fires ready offline online quit clientConnection clientDisconnection clientUpdate data */
 export default class Server extends Client {
-    // Hashmap of all active connections.
+    // Map of all active connections.
     public clients: Map<Peer.dcID, Peer.DataConnection> = new Map
 
     private doNotLog: boolean = false
@@ -16,19 +15,18 @@ export default class Server extends Client {
         hostID: Peer.peerID,
     }) {
         this.peer = new Peer(hostID, options)
-        this.peer.on('open', id => this.emit('ready', id))
+        this.peer.on('open', id => {
+            this.emit('online')
+            this.emit('ready', id)
+        })
         this.peer.on('connection', c => this.clientConnection(c, version))
         this.peer.on('error', this.errorHandler.bind(this))
         this.peer.on('close', this.quit.bind(this))
-        this.emit('online')
+        this.peer.on('disconnected', () => this.emit('offline'))
     }
 
-    /**
-     * Do not remove all connections if a client with a bad version connects.
-     * @event error
-     */
     protected errorHandler(e: Error) {
-        // Handle errors with the clientConnection to the host.
+        // Do not remove all connections if a client with a bad version connects.
         if (e instanceof VersionError) {
             this.log(e.message)
             this.emit('error', e)
@@ -39,7 +37,7 @@ export default class Server extends Client {
     /**
      * Generate a short random id, length is always 7.
      */
-    static randomID(): Peer.peerID {
+    private static randomID(): Peer.peerID {
         let num = (new Date).getTime()
         num += Math.random()
         num *= 100
@@ -48,13 +46,23 @@ export default class Server extends Client {
     }
 
     /**
-     * Someone attempts to connect to us.
-     * @event clientConnection clientUpdate
+     * With all connections ready, we don't need to be in the server anymore.
+     * Note: this is not the same as the 'ready' event.
      */
-    protected clientConnection(client: Peer.DataConnection, version?: string) {
+    ready() { this.peer.disconnect() }
+
+    /**
+     * Connect back to the server.
+     */
+    unready() { this.peer.reconnect() }
+
+    /**
+     * Someone attempts to connect to us.
+     */
+    protected clientConnection(client: Peer.DataConnection, version: string) {
         if (client.metadata.version !== version) {
             client.on('open', () => {
-                const e = <any>new VersionError(`Version of client "${client.metadata.version}" doesn't match host "${version}".`)
+                const e = new VersionError(`Version of client "${client.metadata.version}" doesn't match host "${version}".`)
                 e.clientVersion = client.metadata.version
                 e.hostVersion = version
 
@@ -75,28 +83,8 @@ export default class Server extends Client {
     }
 
     /**
-     * With all connections ready, we don't need to be in the server anymore.
-     * @event offline
-     */
-    ready() {
-        this.peer.disconnect()
-        this.emit('offline')
-    }
-
-    /**
-     * Connect back to the server.
-     * @event online
-     */
-    unready() {
-        this.peer.reconnect()
-        this.emit('online')
-    }
-
-    /**
-     *
      * A client has left the game.
      * @returns whether the client was actually removed.
-     * @event clientDisconnection clientUpdate
      */
     protected clientDisconnection(client: Peer.DataConnection): boolean {
         this.log('closing with', client.id)
@@ -112,6 +100,7 @@ export default class Server extends Client {
         // give the client a chance to reconnect
         if (this.peer.disconnected) {
             this.unready()
+            this.log('Connecting back to the server to allow the last client to reconnect.')
             setTimeout(() => this.ready(), 10000)
         }
 
@@ -120,7 +109,6 @@ export default class Server extends Client {
 
     /**
      * Parse a message to decide what to do.
-     * @event data
      */
     protected receive(data: { to: Peer.dcID, data: any }, client?: Peer.DataConnection): boolean {
         // Forward a message on behalf of someone
@@ -136,18 +124,13 @@ export default class Server extends Client {
                 if (client && id === client.id) continue
                 this.send(data.data, connection, client)
             }
-            this.emit('data', {
-                from: client,
-                data: data.data,
-            })
+            this.receive(data.data, client)
             return false
         }
 
         // receive a regular message
-        this.emit('data', {
-            from: client,
-            data,
-        })
+        const from = client ? client.id : ''
+        this.emit('data', {from, data})
         return true
     }
 
