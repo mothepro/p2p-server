@@ -9,20 +9,25 @@ export default class Server extends Client {
 
     private doNotLog: boolean = false
 
-    makePeer({version, options, hostID = Server.randomID()}: {
-        version: string,
-        options: Peer.PeerJSOption
-        hostID: Peer.peerID,
+    protected onPeerOpen(version: string, hostID: Peer.peerID) {
+        return (id: Peer.peerID) => this.emit('ready', id)
+    }
+    protected onPeerDisconnect() {
+        super.onPeerDisconnect()
+        return this.emit('offline')
+    }
+    protected onPeerConnect(version: string) {
+        return (client: Peer.DataConnection) => this.clientConnection(client, version)
+    }
+
+    constructor({key, version, logger, options}: {
+        key: string, // a Peer JS API key.
+        version: string, // version of top package, to make sure host and client are in sync.
+        logger?: typeof Client.prototype.log, // optional method to log info.
+        options?: Peer.PeerJSOption, // Extra PeerJS options
     }) {
-        this.peer = new Peer(hostID, options)
-        this.peer.on('open', id => {
-            this.emit('online')
-            this.emit('ready', id)
-        })
-        this.peer.on('connection', c => this.clientConnection(c, version))
-        this.peer.on('error', this.errorHandler.bind(this))
-        this.peer.on('close', this.quit.bind(this))
-        this.peer.on('disconnected', () => this.emit('offline'))
+        super({key, version, hostID: '', logger, options})
+        this.peer.on('connection', this.onPeerConnect(version))
     }
 
     protected errorHandler(e: Error) {
@@ -32,17 +37,6 @@ export default class Server extends Client {
             this.emit('error', e)
         } else
             super.errorHandler(e)
-    }
-
-    /**
-     * Generate a short random id, length is always 7.
-     */
-    private static randomID(): Peer.peerID {
-        let num = (new Date).getTime()
-        num += Math.random()
-        num *= 100
-        const ret = <string>Math.floor(num).toString(36) // base 36
-        return ret.substr(3, 7) // remove repetition
     }
 
     /**

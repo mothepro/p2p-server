@@ -24,49 +24,43 @@ export default class Client extends EventEmitter<
 
 	private stopping: boolean = false
 
+	protected onPeerOpen(version: string, hostID: Peer.peerID) {
+		return (id: Peer.peerID) => {
+            this.emit('online')
+			this.connect({version, hostID})
+        }
+	}
+	protected onPeerClose() { return this.quit() }
+	protected onPeerError(e: Error) { return this.errorHandler(e) }
+	protected onPeerDisconnect() { return this.emit('offline') }
+
 	/**
 	 * Create a host as a server to other clients.
 	 */
-	constructor({key, version, hostID, logger = null, options = { secure: false }}: {
+	constructor({key, version, hostID, logger, options = { secure: false }}: {
 		key: string, // a Peer JS API key.
 		version: string, // version of top package, to make sure host and client are in sync.
-		hostID?: Peer.peerID, // peer id of host to connect to.
+		hostID: Peer.peerID, // peer id of host to connect to.
 		logger?: typeof Client.prototype.log, // optional method to log info.
 		options?: Peer.PeerJSOption, // Extra PeerJS options
 	}) {
 		super()
 
 		if (logger) {
-			this.log            = logger
-			options.debug       = 3
-			options.logFunction = this.log.bind(this, 'peerjs')
+			this.log = logger
+			options = {
+				...options,
+				debug: 3,
+				logFunction: this.log.bind(this, 'peerjs'),
+			}
 		}
 		options.key = key
 
-		this.makePeer({version, hostID, options})
-	}
-
-	/**
-	 * Creates the peer.
-	 *
-	 * @param version version of top package, to make sure host and client are in sync.
-	 * @param hostID peer id of host to connect to.
-	 * @param options for the Peer constructor.
-	 */
-	protected makePeer({version, hostID, options}: {
-		version: string,
-		hostID?: Peer.peerID,
-		options: Peer.PeerJSOption
-	}): void {
-		this.peer = new Peer(options)
-		this.peer.on('error', this.errorHandler.bind(this))
-		this.peer.on('close', this.quit.bind(this))
-	  	this.peer.on('disconnected', () => this.emit('offline'))
-
-		if (hostID)
-			this.peer.on('open', id => this.connect({version, hostID}))
-		else
-			this.errorHandler(Error('hostID was not specified on client.'))
+		this.peer = new Peer(Client.randomID(), options)
+		this.peer.on('open', this.onPeerOpen(version, hostID))
+        this.peer.on('error', this.onPeerError)
+        this.peer.on('close', this.onPeerClose)
+        this.peer.on('disconnected', this.onPeerDisconnect)
 	}
 
 	/**
@@ -100,7 +94,6 @@ export default class Client extends EventEmitter<
 		version: string // version of top package, to make sure host and client are in sync.
 		hostID: Peer.peerID // id of host to connect to.
 	}): void {
-		this.emit('online')
 		this.host = this.peer.connect(hostID, {metadata: {version}})
 		this.host.on('error', this.errorHandler.bind(this))
 		this.host.on('close', this.disconnect.bind(this))
@@ -187,4 +180,15 @@ export default class Client extends EventEmitter<
 			this.emit('quit')
 		}
 	}
+
+    /**
+     * Generate a short random id, length is always 7.
+     */
+    private static randomID(): Peer.peerID {
+        let num = (new Date).getTime()
+        num += Math.random()
+        num *= 100
+        const ret = <string>Math.floor(num).toString(36) // base 36
+        return ret.substr(3, 7) // remove repetition
+    }
 }
