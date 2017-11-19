@@ -1,11 +1,11 @@
 import 'should'
 import * as mock from 'mock-require'
+import MockPeer = require('./stubs/MockPeer')
 import {MockDataConnection} from './stubs/MockPeer'
+mock('peerjs', MockPeer)
 import Client from '../src/Client'
 import Server from '../src/Server'
-import MockPeer = require('./stubs/MockPeer')
 
-mock('peerjs', MockPeer)
 
 const key = 'test-key' // TEST API Key
 const version = 'test-version' // TEST Default Version

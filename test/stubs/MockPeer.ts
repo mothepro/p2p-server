@@ -1,6 +1,13 @@
-import * as EventEmitter from 'events'
+import EventEmitter from 'typed-event-emitter-2'
 import Peer = require('peerjs')
 import RTCDataChannel = require('peerjs')
+
+declare let global: { window: {} }
+global['window'] = <any>{
+    RTCIceCandidate: {},
+    RTCSessionDescription: {},
+    RTCPeerConnection: {},
+}
 
 const allPeers: Map<MockPeer.peerID, MockPeer> = new Map
 
@@ -12,7 +19,12 @@ function randomID(): string {
     return ret.substr(3, 7) // remove repetition
 }
 
-class MockPeer extends EventEmitter {
+class MockPeer extends EventEmitter<'close' | 'disconnected', {
+    open: string
+    connection: Peer.DataConnection
+    call: Peer.MediaConnection
+    error: Error
+}> {
     destroyed: boolean = false
     disconnected: boolean = false
     public id: Peer.peerID
@@ -63,7 +75,7 @@ class MockPeer extends EventEmitter {
         this.connectionMap.set(id, theirData)
         otherPeer.connectionMap.set(this.id, myData)
 
-        otherPeer.emit('connection', theirData)
+        otherPeer.emit('connection', <any>theirData)
         return myData
     }
 
@@ -97,7 +109,10 @@ module MockPeer {
     /**
      * A Mock of a WebRTC DataChannel
      */
-    export class MockDataConnection extends EventEmitter {
+    export class MockDataConnection extends EventEmitter<'open' | 'close', {
+        data: any
+        error: Error
+    }> {
         client: MockDataConnection
         readonly peer: peerID = this.host.id
 
