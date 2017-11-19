@@ -75,7 +75,7 @@ class MockPeer extends EventEmitter<'close' | 'disconnected', {
         this.connectionMap.set(id, theirData)
         otherPeer.connectionMap.set(this.id, myData)
 
-        otherPeer.emit('connection', <any>theirData)
+        otherPeer.emit('connection', theirData)
         return myData
     }
 

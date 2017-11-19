@@ -12,8 +12,8 @@ export default class Server extends Client {
     /**
      * Create a client as a server to other clients.
      */
-    constructor(protected key: string, // a Peer JS API key.
-                protected version: string, // version of top package, to make sure host and client are in sync.
+    constructor(key: string, // a Peer JS API key.
+                version: string, // version of top package, to make sure host and client are in sync.
                 opts?: {
                     logger?: typeof Client.prototype.log, // optional method to log info.
                     options?: Peer.PeerJSOption, // Extra PeerJS options
@@ -105,7 +105,7 @@ export default class Server extends Client {
      */
     protected clientConnection(client: Peer.DataConnection) {
         if (client.metadata.version !== this.version) {
-            (<any>client).once('open', () => {
+            client.once('open', () => {
                 const e = new VersionError(`Version of client "${client.metadata.version}" doesn't match host "${this.version}".`)
                 e.clientVersion = client.metadata.version
                 e.hostVersion = this.version
@@ -146,7 +146,7 @@ export default class Server extends Client {
     /**
      * Parse a message to decide what to do.
      */
-    protected receive(data: {to: Peer.dcID, data: any}, client?: Peer.DataConnection): boolean {
+    protected receive(data: {to?: Peer.dcID, data: any}, client?: Peer.DataConnection): boolean {
         // Forward a message on behalf of someone
         if (data instanceof DirectMessage) {
             this.send(data.data, data.to, client)
@@ -189,9 +189,7 @@ export default class Server extends Client {
     /**
      * Listener when a client peer connects with our peer.
      */
-    protected onPeerConnection(client: Peer.DataConnection) {
-        this.clientConnection(client)
-    }
+    protected onPeerConnection(client: Peer.DataConnection) { this.clientConnection(client) }
 
     /**
      * Listener for a dataConnection's connection with the Host.
