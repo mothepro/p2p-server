@@ -14,17 +14,17 @@ const version = 'test-version' // TEST Default Version
  * Get the peer on the other side of the client
  */
 function connectedPeer(peer: Client): MockPeer {
-	const mockPeer = <any>peer.host
-	const mockDC = mockPeer.client
+    const mockPeer = <any>peer.host
+    const mockDC = mockPeer.client
     return mockDC.host
 }
 
 describe('Connecting', () => {
 	it('should connect', function (done) {
-		const host = new Server({key, version})
+		const host = new Server(key, version)
 
 		host.once('ready', hostID => {
-			const friend = new Client({key, hostID, version})
+			const friend = new Client(key, version, hostID)
 
 			friend.once('connection', () => {
 				friend.should.be.instanceof(Client)
@@ -43,11 +43,11 @@ describe('Messaging', () => {
 		const message = {
 			hello: 'world'
 		}
-		const host = new Server({key, version})
+		const host = new Server(key, version)
 		let friend: Client
 
 		host.once('ready', hostID => {
-			friend = new Client({key, hostID, version})
+			friend = new Client(key, version, hostID)
 			friend.once('connection', () => friend.send(message))
 		})
 
@@ -68,7 +68,7 @@ describe('Messaging', () => {
 			map: new Map([[1, 5], [2, 6]])
 		}
 
-		const host = new Server({key, version})
+		const host = new Server(key, version)
 
 		host.once('ready', hostID => {
 			host.once('clientConnection', hostConnectionToFriend => {
@@ -83,7 +83,7 @@ describe('Messaging', () => {
 				host.send(message, hostConnectionToFriend)
 			})
 
-			const friend = new Client({key, hostID, version})
+			const friend = new Client(key, version, hostID)
 		})
 	})
 
@@ -94,7 +94,7 @@ describe('Messaging', () => {
 			map: new Map([[1, 5], [2, 6]])
 		}
 
-		const host = new Server({key, version})
+		const host = new Server(key, version)
 
 		host.once('ready', hostID => {
 			host.once('clientConnection', hostConnectionToFriend => {
@@ -108,10 +108,10 @@ describe('Messaging', () => {
 					friend.send(message, hostConnectionToFriendTwo.id)
 				})
 
-				const friend2 = new Client({key, hostID, version})
+				const friend2 = new Client(key, version, hostID)
 			})
 
-			const friend = new Client({key, hostID, version})
+			const friend = new Client(key, version, hostID)
 		})
 	})
 })
@@ -124,7 +124,7 @@ describe('Broadcasting', () => {
 			map: new Map([[1, 5], [2, 6]])
 		}
 
-		const host = new Server({key, version})
+		const host = new Server(key, version)
 
 		return new Promise((resolve, reject) => {
 			host.once('ready', hostID => {
@@ -161,10 +161,10 @@ describe('Broadcasting', () => {
 						host.broadcast(message)
 					})
 
-					const friend2 = new Client({key, hostID, version})
+					const friend2 = new Client(key, version, hostID)
 				})
 
-				const friend = new Client({key, hostID, version})
+				const friend = new Client(key, version, hostID)
 			})
 		})
 	})
@@ -176,7 +176,7 @@ describe('Broadcasting', () => {
 			map: new Map([[1, 5], [2, 6]])
 		}
 
-		const host = new Server({key, version})
+		const host = new Server(key, version)
 
 		return new Promise((resolve, reject) => {
 			host.once('ready', hostID => {
@@ -214,10 +214,10 @@ describe('Broadcasting', () => {
 						friend2.broadcast(message)
 					})
 
-					const friend2 = new Client({key, hostID, version})
+					const friend2 = new Client(key, version, hostID)
 				})
 
-                const friend = new Client({key, hostID, version})
+                const friend = new Client(key, version, hostID)
             })
         })
     })
@@ -229,7 +229,7 @@ describe('Broadcasting', () => {
             map: new Map([[1, 5], [2, 6]])
         }
 
-        const host = new Server({key, version})
+        const host = new Server(key, version)
 
         return new Promise((resolve, reject) => {
             host.once('ready', hostID => {
@@ -261,10 +261,10 @@ describe('Broadcasting', () => {
                         friend2.broadcast(message, false)
                     })
 
-                    const friend2 = new Client({key, hostID, version})
+                    const friend2 = new Client(key, version, hostID)
                 })
 
-                const friend = new Client({key, hostID, version})
+                const friend = new Client(key, version, hostID)
             })
         })
     })

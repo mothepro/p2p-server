@@ -2,14 +2,15 @@ import * as EventEmitter from 'events'
 import Peer = require('peerjs')
 import RTCDataChannel = require('peerjs')
 
-declare let global: { window: {} }
-global['window'] = <any>{
-	RTCIceCandidate: {},
-	RTCSessionDescription: {},
-	RTCPeerConnection: {},
-}
-
 const allPeers: Map<MockPeer.peerID, MockPeer> = new Map
+
+function randomID(): string {
+    let num = (new Date).getTime()
+    num += Math.random()
+    num *= 100
+    const ret = <string>Math.floor(num).toString(36) // base 36
+    return ret.substr(3, 7) // remove repetition
+}
 
 class MockPeer extends EventEmitter {
 	destroyed: boolean = false
@@ -24,15 +25,8 @@ class MockPeer extends EventEmitter {
     getConnection(peer: Peer, id: string): any {}
     listAllPeers(callback: (peerIds: Array<string>)=>void): void {}
 
-	constructor(id: any, options?: Peer.PeerJSOption) {
+	constructor(id: any = randomID(), options: Peer.PeerJSOption) {
 		super()
-
-		// only gave options
-		if(typeof id === 'object' || id === undefined) {
-			options = <Peer.PeerJSOption>id
-			id = MockPeer.randomID()
-		}
-
 		this.id = id
 		allPeers.set(this.id, this)
 		setTimeout(() => this.emit('open', id), 0)
@@ -90,14 +84,6 @@ class MockPeer extends EventEmitter {
 			connections[id] = connection
 		return connections
 	}
-
-	static randomID() : string {
-		let num = (new Date).getTime()
-		num += Math.random()
-		num *= 100
-		const ret = <string>Math.floor(num).toString(36) // base 36
-		return ret.substr(3, 7) // remove repetition
-	}
 }
 
 module MockPeer {
@@ -129,7 +115,7 @@ module MockPeer {
             metadata = {version: '0'},
             serialization = 'none',
             reliable = false,
-            connectionId = `dc_${MockPeer.randomID()}`,
+            connectionId = `dc_${randomID()}`,
         }: any = {}) {
             super()
 

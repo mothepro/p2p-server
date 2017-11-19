@@ -9,25 +9,38 @@ export default class Server extends Client {
 
     private doNotLog: boolean = false
 
-    protected onPeerOpen(version: string, hostID: Peer.peerID) {
-        return (id: Peer.peerID) => this.emit('ready', id)
+    // These are the methods listening directly to the Peer and DataConnections.
+    protected onPeerOnline(id: Peer.peerID) {
+        this.emit('online')
+        this.emit('ready', id)
     }
-    protected onPeerDisconnect() {
-        super.onPeerDisconnect()
-        return this.emit('offline')
-    }
-    protected onPeerConnect(version: string) {
-        return (client: Peer.DataConnection) => this.clientConnection(client, version)
+    protected onPeerConnection(client: Peer.DataConnection) {
+        this.clientConnection(client)
     }
 
-    constructor({key, version, logger, options}: {
-        key: string, // a Peer JS API key.
-        version: string, // version of top package, to make sure host and client are in sync.
-        logger?: typeof Client.prototype.log, // optional method to log info.
-        options?: Peer.PeerJSOption, // Extra PeerJS options
-    }) {
-        super({key, version, hostID: '', logger, options})
-        this.peer.on('connection', this.onPeerConnect(version))
+    protected onDataConnectionOpen(client: Peer.DataConnection) {
+        // Only add player to list when they are ready to listen.
+        this.clients.set(client.id, client)
+        this.emit('clientConnection', client)
+        this.emit('clientUpdate')
+    }
+    protected onDataConnectionClose(client: Peer.DataConnection) { this.clientDisconnection(client) }
+    protected onDataConnectionData(client: Peer.DataConnection, data: any) { this.receive(unpack(data), client) }
+
+    /**
+     * Create a host as a server to other clients.
+     */
+    constructor(
+        protected key: string, // a Peer JS API key.
+        protected version: string, // version of top package, to make sure host and client are in sync.
+        opts?: {
+            logger?: typeof Client.prototype.log, // optional method to log info.
+            options?: Peer.PeerJSOption, // Extra PeerJS options
+    }) { super(key, version, '', opts) }
+
+    protected bindPeer() {
+        super.bindPeer()
+        this.peer.on('connection', (client: Peer.DataConnection) => this.onPeerConnection(client))
     }
 
     protected errorHandler(e: Error) {
@@ -53,26 +66,25 @@ export default class Server extends Client {
     /**
      * Someone attempts to connect to us.
      */
-    protected clientConnection(client: Peer.DataConnection, version: string) {
-        if (client.metadata.version !== version) {
+    protected clientConnection(client: Peer.DataConnection) {
+        if (client.metadata.version !== this.version) {
             client.on('open', () => {
-                const e = new VersionError(`Version of client "${client.metadata.version}" doesn't match host "${version}".`)
+                const e = new VersionError(`Version of client "${client.metadata.version}" doesn't match host "${this.version}".`)
                 e.clientVersion = client.metadata.version
-                e.hostVersion = version
+                e.hostVersion = this.version
 
                 this.send(e, client)
                 this.errorHandler(e)
             })
         } else {
-            // Only add player to list when they are ready to listen.
-            client.on('open', () => {
-                this.clients.set(client.id, client)
-                this.emit('clientConnection', client)
-                this.emit('clientUpdate')
-            })
-            client.on('data', data => this.receive(unpack(data), client))
-            client.on('close', this.clientDisconnection.bind(this, client))
-            client.on('error', this.errorHandler.bind(this))
+            this.bindDataConnection(client)
+            // client.on('open', () => {
+            //     this.clients.set(client.id, client)
+            //     this.emit('clientConnection', client)
+            //     this.emit('clientUpdate')
+            // })
+            // client.on('data', data => this.receive(unpack(data), client))
+            // client.on('close', this.clientDisconnection.bind(this, client))
         }
     }
 
