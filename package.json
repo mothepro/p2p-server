@@ -1,6 +1,6 @@
 {
   "name": "p2p-server",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "description": "A server-client library built using peerjs. (No server needed)",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
@@ -33,6 +33,7 @@
     "@types/should": "^8.3.0",
     "mocha": "^3.2.0",
     "mock-require": "^2.0.2",
+    "publish-please": "^2.3.1",
     "should": "^11.2.0",
     "ts-loader": "^3.1.0",
     "typescript": "^2.4.1",
