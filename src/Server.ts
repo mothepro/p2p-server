@@ -101,7 +101,7 @@ export default class Server extends Client {
     }
 
     /**
-     * Someone attempts to connect to us.
+     * A client attempts to connect to us.
      */
     protected clientConnection(client: Peer.DataConnection) {
         if (client.metadata.version !== this.version) {
@@ -116,6 +116,15 @@ export default class Server extends Client {
             })
         } else
             this.bindDataConnection(client)
+    }
+
+    /**
+     * The connected client is ready to talk to.
+     */
+    protected clientReady(client: Peer.DataConnection) {
+        this.clients.set(client.id, client)
+        this.emit('clientConnection', client)
+        this.emit('clientUpdate')
     }
 
     /**
@@ -171,44 +180,33 @@ export default class Server extends Client {
     }
 
     /**
-     * Binds all the correct listeners to THE Peer.
+     * Add a listener for incoming connections.
      */
     protected bindPeer() {
         super.bindPeer()
-        this.peer.on('connection', (client: Peer.DataConnection) => this.onPeerConnection(client))
+        this.peer.on('connection', (client: Peer.DataConnection) => this.clientConnection(client))
     }
 
     /**
-     * Listener when the peer connects with the brokering server.
+     * Replace the original listener on 'data' event.
      */
-    protected onPeerOnline(id: Peer.peerID) {
-        this.emit('online')
-        this.emit('ready', id)
+    protected bindDataConnection(dataConnection: Peer.DataConnection) {
+        // dataConnection.on('error', (err: Error) => this.errorHandler(err))
+        super.bindDataConnection(dataConnection)
+        dataConnection.removeAllListeners('close')
+        dataConnection.removeAllListeners('open')
+        dataConnection.removeAllListeners('data')
+
+        dataConnection.on('close', () => this.clientDisconnection(dataConnection))
+        dataConnection.on('open', () => this.clientReady(dataConnection))
+        dataConnection.on('data', (data: any) => this.receive(unpack(data), dataConnection))
     }
 
     /**
-     * Listener when a client peer connects with our peer.
+     *
      */
-    protected onPeerConnection(client: Peer.DataConnection) { this.clientConnection(client) }
-
-    /**
-     * Listener for a dataConnection's connection with the Host.
-     */
-    protected onDataConnectionOpen(client: Peer.DataConnection) {
-        // Only add player to list when they are ready to listen.
-        this.clients.set(client.id, client)
-        this.emit('clientConnection', client)
-        this.emit('clientUpdate')
+    protected bindMe() {
+        this.on('online', () => this.emit('ready', this.peer.id))
     }
-
-    /**
-     * Listener for a dataConnection's disconnection with the Host.
-     */
-    protected onDataConnectionClose(client: Peer.DataConnection) { this.clientDisconnection(client) }
-
-    /**
-     * Listener for data through a dataConnection.
-     */
-    protected onDataConnectionData(client: Peer.DataConnection, data: any) { this.receive(unpack(data), client) }
 
 }

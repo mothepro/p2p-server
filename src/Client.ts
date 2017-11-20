@@ -36,6 +36,8 @@ export default class Client extends EventEmitter<
                 } = {}) {
         super()
 
+        this.bindMe()
+
         if (logger) {
             this.log = logger
             options = {
@@ -157,9 +159,10 @@ export default class Client extends EventEmitter<
      * Can try to reconnect to the server, then to the host again.
      */
     private retryConnectHost(): void {
+        // go back online
         this.peer.reconnect()
 
-        // can't connectToHost to server
+        // can't connect to server? Give up.
         if (this.peer.disconnected)
             this.quit()
     }
@@ -168,68 +171,25 @@ export default class Client extends EventEmitter<
      * Binds all the correct listeners to THE Peer.
      */
     protected bindPeer() {
-        this.peer.on('open', (id: Peer.peerID) => this.onPeerOnline(id))
-        this.peer.on('disconnected', () => this.onPeerOffline())
-        this.peer.on('close', () => this.onPeerClose())
-        this.peer.on('error', (err: Error) => this.onPeerError(err))
+        this.peer.on('open', () => this.emit('online'))
+        this.peer.on('disconnected', () => this.emit('offline'))
+        this.peer.on('close', () => this.quit())
+        this.peer.on('error', (err: Error) => this.errorHandler(err))
     }
 
     /**
      * Binds all the correct listeners to a DataConnection.
      */
     protected bindDataConnection(dataConnection: Peer.DataConnection) {
-        dataConnection.on('error', (err: Error) => this.onDataConnectionError(dataConnection, err))
-        dataConnection.on('close', () => this.onDataConnectionClose(dataConnection))
-        dataConnection.on('open', () => this.onDataConnectionOpen(dataConnection))
-        dataConnection.on('data', (data: any) => this.onDataConnectionData(dataConnection, data))
+        dataConnection.on('error', (err: Error) => this.errorHandler(err))
+        dataConnection.on('close', () => this.emit('disconnection'))
+        dataConnection.on('open', () => this.emit('connection'))
+        dataConnection.on('data', (data: any) => this.receive(unpack(data)))
     }
 
-    /**
-     * Listener when the peer connects with the brokering server.
-     */
-    protected onPeerOnline(id: Peer.peerID) {
-        this.emit('online')
-        this.connectToHost()
+    protected bindMe() {
+        this.on('online', () => this.connectToHost())
+        this.on('connection', () => this.peer.disconnect())
+        this.on('disconnection', () => this.retryConnectHost())
     }
-
-    /**
-     * Listener when the peer disconnects with the brokering server.
-     */
-    protected onPeerOffline() { this.emit('offline') }
-
-    /**
-     * Listener when the peer connection closes / should be closed.
-     */
-    protected onPeerClose() { this.quit() }
-
-    /**
-     * Listener for errors on the peer.
-     */
-    protected onPeerError(e: Error) { this.errorHandler(e) }
-
-    /**
-     * Listener for a dataConnection's connection with the Host.
-     */
-    protected onDataConnectionOpen(client: Peer.DataConnection) {
-        this.emit('connection')
-        this.peer.disconnect()
-    }
-
-    /**
-     * Listener for a dataConnection's disconnection with the Host.
-     */
-    protected onDataConnectionClose(client: Peer.DataConnection) {
-        this.emit('disconnection')
-        this.retryConnectHost()
-    }
-
-    /**
-     * Listener for data through a dataConnection.
-     */
-    protected onDataConnectionData(client: Peer.DataConnection, data: any) { this.receive(unpack(data)) }
-
-    /**
-     * Listener for errors with a dataConnection.
-     */
-    protected onDataConnectionError(client: Peer.DataConnection, e: Error) { this.errorHandler(e) }
 }
