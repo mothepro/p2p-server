@@ -151,7 +151,7 @@ export default class Client extends EventEmitter<
      */
     private connectToHost() {
         this.host = this.peer.connect(this.hostID, {metadata: {version: this.version}})
-        this.bindDataConnection(this.host)
+        this.bindHost()
     }
 
     /**
@@ -178,13 +178,13 @@ export default class Client extends EventEmitter<
     }
 
     /**
-     * Binds all the correct listeners to a DataConnection.
+     * Binds all the correct listeners to a client DataConnection.
      */
-    protected bindDataConnection(dataConnection: Peer.DataConnection) {
-        dataConnection.on('error', (err: Error) => this.errorHandler(err))
-        dataConnection.on('close', () => this.emit('disconnection'))
-        dataConnection.on('open', () => this.emit('connection'))
-        dataConnection.on('data', (data: any) => this.receive(unpack(data)))
+    protected bindHost() {
+        this.host.on('error', (err: Error) => this.errorHandler(err))
+        this.host.on('close', () => this.emit('disconnection'))
+        this.host.on('open', () => this.emit('connection'))
+        this.host.on('data', (data: any) => this.receive(unpack(data)))
     }
 
     protected bindMe() {

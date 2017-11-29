@@ -115,7 +115,7 @@ export default class Server extends Client {
                 client.close()
             })
         } else
-            this.bindDataConnection(client)
+            this.bindClientDataConnection(client)
     }
 
     /**
@@ -190,13 +190,8 @@ export default class Server extends Client {
     /**
      * Replace the original listener on 'data' event.
      */
-    protected bindDataConnection(dataConnection: Peer.DataConnection) {
-        // dataConnection.on('error', (err: Error) => this.errorHandler(err))
-        super.bindDataConnection(dataConnection)
-        dataConnection.removeAllListeners('close')
-        dataConnection.removeAllListeners('open')
-        dataConnection.removeAllListeners('data')
-
+    protected bindClientDataConnection(dataConnection: Peer.DataConnection) {
+        dataConnection.on('error', (err: Error) => this.errorHandler(err))
         dataConnection.on('close', () => this.clientDisconnection(dataConnection))
         dataConnection.on('open', () => this.clientReady(dataConnection))
         dataConnection.on('data', (data: any) => this.receive(unpack(data), dataConnection))
