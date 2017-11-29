@@ -25,6 +25,11 @@ export default class Client extends EventEmitter<
     private stopping: boolean = false
 
     /**
+     * Logs info, empty by default.
+     */
+    protected log: Function = () => {}
+
+    /**
      * Create a client that will immediately connectToHost to a Host.
      */
     constructor(protected key: string, // a Peer JS API key.
@@ -63,11 +68,6 @@ export default class Client extends EventEmitter<
         const ret = <string>Math.floor(num).toString(36) // base 36
         return ret.substr(3, 7) // remove repetition
     }
-
-    /**
-     * Logs info, empty by default.
-     */
-    log(...args: any[]): void {}
 
     /**
      * Send data to the host.

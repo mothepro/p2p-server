@@ -15,7 +15,7 @@ export default class Server extends Client {
     constructor(key: string, // a Peer JS API key.
                 version: string, // version of top package, to make sure host and client are in sync.
                 opts?: {
-                    logger?: typeof Client.prototype.log, // optional method to log info.
+                    logger?: typeof Server.prototype.log, // optional method to log info.
                     options?: Peer.PeerJSOption, // Extra PeerJS options
                 }) {
         super(key, version, '', opts)
